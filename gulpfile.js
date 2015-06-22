@@ -6,6 +6,7 @@ var gulp = require('gulp'),
     sourcemaps = require('gulp-sourcemaps'),
     del = require('del'),
     Config = require('./gulpfile.config');
+    mocha = require('gulp-mocha');
 
 var config = new Config();
 
@@ -20,22 +21,24 @@ gulp.task('lint', function () {
  * Compile TypeScript and include references to library and app .d.ts files.
  */
 gulp.task('compile', function () {
+    console.log("compiling");
     var sourceTsFiles = [config.allTypeScript,                //path to typescript files
-                         config.libraryTypeScriptDefinitions]; //reference to library .d.ts files
+                       config.libraryTypeScriptDefinitions]; //reference to library .d.ts files
 
     var tsResult = gulp.src(sourceTsFiles)
-                       .pipe(sourcemaps.init())
-                       .pipe(tsc({
-                           target: 'es6',
-                           declarationFiles: false,
-                           noExternalResolve: true,
-                           module: "commonjs"
-                       }));
+                    .pipe(sourcemaps.init())
+                    .pipe(tsc({
+                        typescript: require('typescript'),
+                        target: 'es5',
+                        module: 'commonjs',
+                        declarationFiles: false,
+                        noExternalResolve: true
+                    }));
 
-        tsResult.dts.pipe(gulp.dest(config.tsOutputPath));
-        return tsResult.js
-                        .pipe(sourcemaps.write('.'))
-                        .pipe(gulp.dest(config.tsOutputPath));
+    tsResult.dts.pipe(gulp.dest(config.tsOutputPath));
+    return tsResult.js
+                    .pipe(sourcemaps.write('.'))
+                    .pipe(gulp.dest(config.tsOutputPath));
 });
 
 /**
@@ -51,8 +54,19 @@ gulp.task('clean', function (cb) {
   del(typeScriptGenFiles, cb);
 });
 
-gulp.task('watch', function() {
-    gulp.watch([config.allTypeScript], ['compile']);
+gulp.task('default', function () {
+    return gulp.src('test.js', {read: false})
+        // gulp-mocha needs filepaths so you can't have any plugins before it
+        .pipe(mocha({reporter: 'nyan'}));
 });
 
-gulp.task('default', ['compile', 'watch']);
+gulp.task('unit.test', ['compile'], function() {
+  return gulp.src('test/e2e/test.js', {read: false})
+  .pipe(mocha({reporter: 'nyan'}));
+});
+
+gulp.task('watch', function() {
+    gulp.watch([config.allTypeScript], ['compile', 'unit.test']);
+});
+
+gulp.task('default', ['compile', 'unit.test', 'watch']);
