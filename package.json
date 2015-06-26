@@ -14,7 +14,8 @@
     "gulp-tslint": ">=3.0.1-beta",
     "gulp-sourcemaps": ">=1.5.2",
     "del": ">=1.2.0",
-    "mocha": ">=2.2.5"
+    "mocha": ">=2.2.5",
+    "es6-map": ">=0.1.1"
   },
   "devDependencies": {
     "gulp-mocha": "^2.1.1"
