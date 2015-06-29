@@ -11,9 +11,9 @@ describe('Hello World', function() {
 
 describe('Next lateral property name', function() {
   it('generates the next shortname for a property', function() {
-    var transpiler = new Transpiler(); // why does this not work?
-    assert.equal(transpiler.generate_next_lateral_property_name('a'), 'b');
-    assert.equal(transpiler.generate_next_lateral_property_name('zz'), 'aaa');
-    assert.equal(transpiler.generate_next_lateral_property_name('ba'), 'bb');
+    var transpiler = new Transpiler();
+    assert.equal(transpiler.generateNextLateralPropertyName('a'), 'b');
+    assert.equal(transpiler.generateNextLateralPropertyName('zz'), 'aaa');
+    assert.equal(transpiler.generateNextLateralPropertyName('ba'), 'bb');
   })
 });
