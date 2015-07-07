@@ -29,3 +29,7 @@ node_modules
 
 # Typescript specific 
 typings
+
+# Project Specific
+build/
+*-renamed.ts
