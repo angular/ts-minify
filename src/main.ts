@@ -141,8 +141,7 @@ export class Transpiler {
           //fsx.mkdirsSync(path.dirname(outputFile));
           fs.writeFileSync(outputFile, renamedCode);
         });
-    /* TODO: Implmenent checkForErrors */
-    /* this.checkForErrors(program); */
+    this.checkForErrors(program);
   }
 
   /* Walk the AST of the program */
@@ -491,8 +490,11 @@ export class Transpiler {
     }
   }
 
-  /* Somewhat of a misnomer to refer to pString as "parent" */
-  /* typeChecker: ts.TypeChecker, pString: string */
+  /* 
+   * TODO: Figure out if pString should be kept.
+   * Clean up: Don't need a case for each syntax kind since we are only concerned with
+   * property declarations (for now) to create the rename map.
+   */
   traverse(node: ts.Node, typeChecker?: ts.TypeChecker, pString?: string) {
     if (DEBUG) console.log(node.kind + ': ' + ts.SyntaxKind[node.kind]);
     var _this = this;
@@ -520,7 +522,7 @@ export class Transpiler {
       case ts.SyntaxKind.BinaryExpression:
         break;
       /* Always has .text */
-      /* we rename the property and add it to the dictionary */
+      /* If the identifier's parent is a PropertyDeclaration, add it to the dictionary */
       case ts.SyntaxKind.Identifier:
         var id = <ts.Identifier>node;
         var enumKind = id.parent.kind;
@@ -528,6 +530,8 @@ export class Transpiler {
         if (DEBUG) console.log('parent: ' + ts.SyntaxKind[enumKind]);
         if (DEBUG) console.log('id.text ' + id.text);
         if (DEBUG) console.log('=============================');
+
+        /* TODO: Does the grandparent have to be a ClassDeclaration? */
         if (id.parent.kind === ts.SyntaxKind.PropertyDeclaration && 
           id.parent.parent.kind === ts.SyntaxKind.ClassDeclaration) {
           /* Add to rename map */
@@ -703,10 +707,29 @@ export class Transpiler {
         .filter((sourceFile: ts.SourceFile) => (!sourceFile.fileName.match(/\.d\.ts$/) &&
                                                 !!sourceFile.fileName.match(/\.[jt]s$/)))
         .forEach((f) => paths[f.fileName] = this.translate(f, typeChecker));
-    /* TODO: Error checking */
+    this.checkForErrors(program);
     return paths;
   }
 
+  private checkForErrors(program: ts.Program) {
+    var errors = this.errors;
+    var diagnostics = program.getGlobalDiagnostics().concat(program.getSyntacticDiagnostics());
+
+    var diagnosticErrors = diagnostics.map(diagnostic => {
+      var message = '';
+      if (diagnostic.file) {
+        let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        message += `Error ${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`;
+      }
+      message += ': ';
+      message += ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+      return message;
+    });
+    
+    if (diagnosticErrors.length) errors = errors.concat(diagnosticErrors);
+
+    if (errors.length) { /* TODO: throw error specific to this project? */ };
+  }
 }
 
 /*
@@ -769,7 +792,9 @@ class Output {
   getResult(): string { return this.result; }
 }
 
-var transpiler = new Transpiler();
-transpiler.stupidMode = true;  // Figure out a way to set this. 
-transpiler.transpile(['../../test/input/basic_greeter.ts']);
+if (DEBUG) {
+  var transpiler = new Transpiler();
+  transpiler.stupidMode = true;  // Figure out a way to set this. 
+  transpiler.transpile(['../../test/input/basic_greeter.ts']);
+}
 
