@@ -70,7 +70,8 @@ export class Transpiler {
   /* Not needed as of now */
   private errors: string[] = [];
 
-  constructor() { /* nothing here yet */ }
+  constructor() { /* nothing here yet */
+  }
 
   emit(s: string) {
     if (DEBUG)
@@ -150,8 +151,7 @@ export class Transpiler {
           // fsx.mkdirsSync(path.dirname(outputFile));
           fs.writeFileSync(outputFile, renamedCode);
         });
-    /* TODO: Implmenent checkForErrors */
-    /* this.checkForErrors(program); */
+    this.checkForErrors(program);
   }
 
   /* Walk the AST of the program */
@@ -500,7 +500,12 @@ export class Transpiler {
       console.log(statement);
   }
 
-  /* TODO: Figure out if pString necessary */
+  /*
+   * TODO: Figure out if pString should be kept.
+    * Clean up: Don't need a case for each syntax kind since we are only
+   concerned with
+      property declarations (for now) to create the rename map.
+  */
   traverse(node: ts.Node, typeChecker?: ts.TypeChecker, pString?: string) {
     if (DEBUG)
       console.log(node.kind + ': ' + ts.SyntaxKind[node.kind]);
@@ -527,8 +532,8 @@ export class Transpiler {
       break;
     case ts.SyntaxKind.BinaryExpression:
       break;
-    /* Always has .text */
-    /* we rename the property and add it to the dictionary */
+    /* If the identifier's parent is a PropertyDeclaration, add it to the
+     * dictionary */
     case ts.SyntaxKind.Identifier:
       var id = <ts.Identifier>node;
       var enumKind = id.parent.kind;
@@ -708,6 +713,31 @@ export class Transpiler {
     return this.getOutput();
   }
 
+  private checkForErrors(program: ts.Program) {
+    var errors = this.errors;
+    var diagnostics = program.getGlobalDiagnostics().concat(
+        program.getSyntacticDiagnostics());
+
+    var diagnosticErrors = diagnostics.map(diagnostic => {
+      var message = '';
+      if (diagnostic.file) {
+        let{line, character} =
+            diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        message +=
+            `Error ${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`;
+      }
+      message += ': ';
+      message += ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+      return message;
+    });
+
+    if (diagnosticErrors.length)
+      errors = errors.concat(diagnosticErrors);
+
+    if (errors.length) {/* TODO: throw error specific to this project? */
+    };
+  }
+
   private getNodeKindInfo(sourceFile: ts.Node) {
     ts.forEachChild(sourceFile, (node) => {
       if (DEBUG)
@@ -725,7 +755,7 @@ export class Transpiler {
                     (!sourceFile.fileName.match(/\.d\.ts$/) &&
                      !!sourceFile.fileName.match(/\.[jt]s$/)))
         .forEach((f) => paths[f.fileName] = this.translate(f, typeChecker));
-    /* TODO: Error checking */
+    this.checkForErrors(program);
     return paths;
   }
 }
