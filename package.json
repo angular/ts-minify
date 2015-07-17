@@ -5,15 +5,15 @@
   "repository": "https://github.com/angular/ts-minify",
   "license": "Apache-2.0",
   "scripts": {
-    "prepublish": "tsd query typescript --action install && tsd query node --action install && tsd query mocha --action install"
+    "prepublish": "tsd query node --action install && tsd query mocha --action install"
   },
   "dependencies": {
-    "typescript": ">=1.5.0-beta",
+    "typescript": "alexeagle/TypeScript#error_is_class",
     "gulp": ">=3.9.0",
     "shrinkwrap": "latest",
     "gulp-debug": ">=2.0.1",
     "gulp-inject": ">=1.3.1",
-    "gulp-typescript": ">=2.7.7",
+    "gulp-typescript": "^2.7.6",
     "gulp-tslint": ">=3.0.1-beta",
     "gulp-sourcemaps": ">=1.5.2",
     "del": ">=1.2.0",

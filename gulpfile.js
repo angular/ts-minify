@@ -26,7 +26,7 @@ var onError = function(err) {
   }
 };
 
-var COMPILER_OPTIONS = {
+var TSC_OPTIONS = {
   module : "commonjs",
   noExternalResolve : false,
   declarationFiles : true,
@@ -38,7 +38,7 @@ var COMPILER_OPTIONS = {
 };
 
 // ts.createProjects takes compiler options
-var tsProject = ts.createProject(COMPILER_OPTIONS);
+var tsProject = ts.createProject(TSC_OPTIONS);
 
 gulp.task('test.check-format', function() {
   return gulp.src([ '*.js', 'src/**/*.ts', 'test/**/*.ts' ])
@@ -73,13 +73,7 @@ gulp.task('compile', function() {
 
   var tsResult = gulp.src(sourceTsFiles)
                      .pipe(sourcemaps.init())
-                     .pipe(ts({
-                       typescript : require('typescript'),
-                       target : 'es5',
-                       module : 'commonjs',
-                       declarationFiles : false,
-                       noExternalResolve : true
-                     }));
+                     .pipe(ts(tsProject));
 
   tsResult.dts.pipe(gulp.dest('./build/src'));
   return tsResult.js.pipe(gulp.dest('./build/src'));
