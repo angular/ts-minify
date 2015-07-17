@@ -9,6 +9,7 @@ var mocha = require('gulp-mocha');
 var gutil = require('gulp-util');
 var merge = require('merge2');
 var typescript = require('typescript');
+var shell = require('gulp-shell');
 
 var clangFormat = require('clang-format');
 var formatter = require('gulp-clang-format');
@@ -53,10 +54,18 @@ gulp.task('lint', function() {
 });
 
 /**
+ * Remove all generated JavaScript files from TypeScript compilation.
+ */
+gulp.task('clean', function(cb) {
+  var typeScriptGenFiles = [ './build/' ] // path to generated JS files
+      // delete the files
+      del(typeScriptGenFiles, cb);
+});
+
+/**
  * Compile TypeScript and include references to library and app .d.ts files.
  */
 gulp.task('compile', function() {
-  console.log("compiling");
   var sourceTsFiles = [
     './src/*.ts', // path to typescript files
     './typings/**/*.ts'
@@ -76,15 +85,6 @@ gulp.task('compile', function() {
   return tsResult.js.pipe(gulp.dest('./build/src'));
 });
 
-/**
- * Remove all generated JavaScript files from TypeScript compilation.
- */
-gulp.task('clean', function(cb) {
-  var typeScriptGenFiles = [ './build/' ] // path to generated JS files
-      // delete the files
-      del(typeScriptGenFiles, cb);
-});
-
 gulp.task('test.compile', [ 'compile' ], function(done) {
   if (hasError) {
     done();
@@ -98,12 +98,18 @@ gulp.task('test.compile', [ 'compile' ], function(done) {
       .pipe(gulp.dest('build/')); // '/test/' comes from base above.
 });
 
-gulp.task('unit.test', [ 'test.compile' ], function() {
+/* Reformat the generated TS */
+gulp.task('reformat', [ 'test.compile' ], function() {
+  return gulp.src([ './test/input/*_renamed.ts' ], {read : false})
+      .pipe(shell(['./node_modules/clang-format/index.js -i -style="file" ./test/input/*_renamed.ts']));
+});
+
+gulp.task('unit.test', [ 'test.compile', 'reformat' ], function() {
   return gulp.src('build/test/unit/test.js', {read : false}).pipe(mocha({}));
 });
 
 gulp.task('watch', function() {
-  gulp.watch([ './src/*.ts' ], [ 'compile', 'test.compile', 'unit.test' ]);
+  gulp.watch([ './src/*.ts', './test/**/*.ts' ], [ 'compile', 'test.compile', 'unit.test' ]);
 });
 
 gulp.task('default', [ 'compile', 'unit.test', 'watch' ]);
