@@ -154,6 +154,10 @@ export class Transpiler {
     this.checkForErrors(program);
   }
 
+  private walkChildren(node: ts.Node) {
+    ts.forEachChild(node, (child) => this.visit(child));
+  }
+
   /* Walk the AST of the program */
   walk(sourcefile: ts.SourceFile, typeChecker: ts.TypeChecker) {
     this.currentFile = sourcefile;
@@ -163,194 +167,436 @@ export class Transpiler {
 
   /*
    * VISITOR PATTERN: Emitting output
+   * TODO: Organize cases into parts of the syntax
    */
   visit(node: ts.Node, indent?: number) {
     switch (node.kind) {
-    case ts.SyntaxKind.ExportKeyword:
-      if (DEBUG)
-        console.log('export keyword');
-      this.emit('export ');
-      break;
-    case ts.SyntaxKind.ClassDeclaration:
-      var cd = <ts.ClassDeclaration>node;
-      if (DEBUG)
-        console.log(cd);
-      this.visitClassLike('class ', cd);
-      break;
-    case ts.SyntaxKind.VariableStatement:
-      if (DEBUG)
-        console.log('Variable Statement');
-      var vs = <ts.VariableStatement>node;
-      this.visit(vs.declarationList);
-      this.emit(';\n');
-      break;
-    case ts.SyntaxKind.VariableDeclarationList:
-      // Note from Martin: VariableDeclarationList can only occur as part of a
-      // for loop.
-      var varDeclList = <ts.VariableDeclarationList>node;
-      if (DEBUG)
-        console.log('variable declaration list');
-      /* Visit list of variable declarations */
-      varDeclList.declarations.forEach((decl) => {this.visit(decl)});
-      break;
-    case ts.SyntaxKind.VariableDeclaration:
-      if (DEBUG)
-        console.log('variable declaration!');
-      var vd = <ts.VariableDeclaration>node;
-      if (DEBUG)
-        console.log(vd);
-      this.emit('var ');
-      this.visit(vd.name);
-      if (vd.type)
-        this.emit(': ' + vd.type.getText());
-
-      /* How to bind this for an if statement? */
-      if (vd.initializer) {
-        this.emit(' = ');
+      /* ========================================= */
+      /* DECLARATIONS
+      /* ========================================= */
+      case ts.SyntaxKind.VariableDeclarationList:
+        // Note from Martin: VariableDeclarationList can only occur as part of a
+        // for loop.
+        var varDeclList = <ts.VariableDeclarationList>node;
         if (DEBUG)
-          console.log(vd.initializer.kind + ' ' +
-                      ts.SyntaxKind[vd.initializer.kind]);
-        /* New Expression */
-        this.visit(vd.initializer);
-      }
-
-      break;
-    case ts.SyntaxKind.PropertyAssignment:
-      break;
-    case ts.SyntaxKind.PropertyDeclaration:
-      var pd = <ts.PropertyDeclaration>node;
-      if (DEBUG)
-        console.log('propertydeclaration!');
-      this.visitProperty(pd);
-      break;
-    case ts.SyntaxKind.Parameter:
-      var param = <ts.ParameterDeclaration>node;
-      break;
-    case ts.SyntaxKind.Constructor:
-      if (DEBUG)
-        console.log('constructor!');
-      var constructor = <ts.ConstructorDeclaration>node;
-      this.visitConstructor(constructor);
-      break;
-    case ts.SyntaxKind.Block:
-      if (DEBUG)
-        console.log('block!');
-      var block = <ts.Block>node;
-      this.visitBlock(block);
-      break;
-    case ts.SyntaxKind.NewExpression:
-      if (DEBUG)
-        console.log('new expression');
-      var newExp = <ts.NewExpression>node;
-      if (DEBUG)
-        console.log(newExp);
-
-      var lhs = newExp.expression;
-      var typeArgs = newExp.typeArguments;
-      var args = newExp.arguments;
-
-      this.emit('new ');
-      this.visit(lhs);
-      this.emit('(');
-
-      /* TODO: Differentiate between TypeArgs and Args */
-      var argSize = args.length;
-      args.forEach(function(arg, i) {
+          console.log('variable declaration list');
+        /* Visit list of variable declarations */
+        varDeclList.declarations.forEach((decl) => {this.visit(decl)});
+        break;
+      case ts.SyntaxKind.VariableDeclaration:
         if (DEBUG)
-          console.log(arg);
-        this.visit(arg);
-        if (i < argSize - 1) {
-          this.emit(', ');
+          console.log('variable declaration!');
+        var vd = <ts.VariableDeclaration>node;
+        if (DEBUG)
+          console.log(vd);
+        this.emit('var ');
+        this.visit(vd.name);
+        if (vd.type)
+          this.emit(': ' + vd.type.getText());
+
+        if (vd.initializer) {
+          this.emit(' = ');
+          if (DEBUG)
+            console.log(vd.initializer.kind + ' ' +
+                        ts.SyntaxKind[vd.initializer.kind]);
+          /* New Expression */
+          this.visit(vd.initializer);
         }
-      });
+        break;
+      case ts.SyntaxKind.ClassDeclaration:
+        var cd = <ts.ClassDeclaration>node;
+        if (DEBUG)
+          console.log(cd);
+        this.visitClassLike('class ', cd);
+        break;
+      case ts.SyntaxKind.InterfaceDeclaration:
+        break;
+      case ts.SyntaxKind.HeritageClause:
+        break;
+      case ts.SyntaxKind.EnumDeclaration:
+        break;
+      case ts.SyntaxKind.EnumMember:
+        break;
+      case ts.SyntaxKind.Constructor:
+        var constructor = <ts.ConstructorDeclaration>node;
+        var body = constructor.body;
+        var parent = constructor.parent;
+        var params = constructor.parameters;
+        var paramsSize = params.length;
 
-      this.emit(')');
+        /* TODO: visitDeclarationMetaData */
+        /* .... */
+        this.emit('constructor ');
+        /* Visit parameters */
+        this.visitParameters(params);
 
-      break;
-    case ts.SyntaxKind.ExpressionStatement:
-      if (DEBUG)
-        console.log('expression statement!');
-      var es = <ts.ExpressionStatement>node;
-      if (DEBUG)
-        console.log(ts.SyntaxKind[es.expression.kind]);
-      this.visit(es.expression);
-      break;
-    case ts.SyntaxKind.BinaryExpression:
-      if (DEBUG)
+        /* Constructor stuff yay */
+        this.emit('{');
+        /* Visit body of constructor */
+        this.visit(body);
+        this.emit('}');
+        break;
+      case ts.SyntaxKind.PropertyDeclaration:
+        var pd = <ts.PropertyDeclaration>node;
+        if (DEBUG)
+          console.log('propertydeclaration!');
+        this.visitProperty(pd);
+        break;
+      case ts.SyntaxKind.GetAccessor:
+        break;
+      case ts.SyntaxKind.SetAccessor:
+        break;
+      case ts.SyntaxKind.SemicolonClassElement:
+        /* ??? */
+        break;
+      case ts.SyntaxKind.MethodDeclaration:
+        var md = <ts.MethodDeclaration>node;
+        if (DEBUG)
+          console.log('MethodDeclaration!');
+        this.visitFunctionLike(md);
+        break;
+      case ts.SyntaxKind.FunctionDeclaration:
+        var funcDecl = <ts.FunctionDeclaration>node;
+        this.visitDecorators(funcDecl.decorators);
+        // Visit function decorators
+        // function typeparameters
+        this.emit('function '); // where should this emit go
+        this.visitFunctionLike(funcDecl);
+        break;
+      case ts.SyntaxKind.ArrowFunction:
+        var arrowFunc = <ts.ArrowFunction>node;
+        this.visitParameters(arrowFunc.parameters);
+        this.emit('=>');
+        this.visit(arrowFunc.body);
+        break;
+      case ts.SyntaxKind.FunctionExpression:
+        var fe = <ts.FunctionExpression>node;
+        this.visitFunctionLike(fe);
+        break;
+      case ts.SyntaxKind.PropertySignature:
+        break;
+      case ts.SyntaxKind.MethodSignature:
+        break;
+      case ts.SyntaxKind.Parameter:
+        var paramDecl = <ts.ParameterDeclaration>node;
+
+        // visit decorators
+        // check for dotdotdot token
+        // name
+        // question token
+        // type
+        // initializer
+
+        this.visitDecorators(paramDecl.decorators);
+        if (paramDecl.dotDotDotToken)
+          this.emit('...');
+        this.visit(paramDecl.name);
+        if (paramDecl.questionToken)
+          this.visit(paramDecl.questionToken);
+        if (paramDecl.type) {
+          this.emit(': ');
+          this.visit(paramDecl.type);
+        }
+        if (paramDecl.initializer) {
+          this.emit('=');
+          this.visit(paramDecl.initializer);
+        }
+
+        break;
+      case ts.SyntaxKind.ObjectBindingPattern:
+        break;
+      case ts.SyntaxKind.BindingElement:
+        break;
+      case ts.SyntaxKind.StaticKeyword:
+        break;
+      case ts.SyntaxKind.PrivateKeyword:
+        break;
+      case ts.SyntaxKind.ProtectedKeyword:
+        break;
+      /* =================================== */
+      /* STATEMENTS
+      /* =================================== */
+      case ts.SyntaxKind.EmptyStatement:
+        this.emit(';');
+        break;
+      case ts.SyntaxKind.ReturnStatement:
+        if (DEBUG)
+          console.log('Return Statement!');
+        var rs = <ts.ReturnStatement>node;
+        this.emit('return');
+
+        if (rs.expression) {
+          this.emit(' ');
+          this.visit(rs.expression);
+        }
+        this.emit(';');
+        break;
+      case ts.SyntaxKind.VariableStatement:
+        if (DEBUG)
+          console.log('Variable Statement');
+        var vs = <ts.VariableStatement>node;
+        this.visit(vs.declarationList);
+        this.emit(';');
+        break;
+      case ts.SyntaxKind.ExpressionStatement:
+        if (DEBUG)
+          console.log('expression statement!');
+        var es = <ts.ExpressionStatement>node;
+        if (DEBUG)
+          console.log(ts.SyntaxKind[es.expression.kind]);
+        this.visit(es.expression);
+        break;
+      case ts.SyntaxKind.SwitchStatement:
+        var switchStatement = <ts.SwitchStatement>node;
+        this.emit('switch (');
+        this.visit(switchStatement.expression);
+        this.emit(')');
+        this.visit(switchStatement.caseBlock);
+        break;
+      case ts.SyntaxKind.CaseBlock:
+        var caseBlock = <ts.CaseBlock>node;
+        this.emit('{');
+        this.visitEach(caseBlock.clauses);
+        this.emit('}');
+        break;
+      case ts.SyntaxKind.CaseClause:
+        var caseClause = <ts.CaseClause>node;
+        this.emit('case');
+        this.visit(caseClause.expression);
+        this.emit(':');
+        this.visitEach(caseClause.statements);
+        break;
+      case ts.SyntaxKind.DefaultClause:
+        var defaultClause = <ts.DefaultClause>node;
+        this.emit('default:');
+        this.visitEach(defaultClause.statements);
+        break;
+      case ts.SyntaxKind.IfStatement:
+        var ifStatement = <ts.IfStatement>node;
+        this.emit('if (');
+        this.visit(ifStatement.expression);
+        this.emit(')');
+        this.visit(ifStatement.thenStatement);
+        if (ifStatement.elseStatement) {
+          this.emit('else');
+          this.visit(ifStatement.elseStatement);
+        }
+        break;
+      case ts.SyntaxKind.ForStatement:
+        var forStatement = <ts.ForStatement>node;
+        this.emit('for (');
+        if (forStatement.initializer)
+          this.visit(forStatement.initializer);
+        this.emit(';');
+        if (forStatement.condition)
+          this.visit(forStatement.condition);
+        this.emit(';');
+        if (forStatement.iterator)
+          this.visit(forStatement.iterator);
+        this.emit(')');
+        this.visit(forStatement.statement);
+        break;
+      /* PICK UP HERE */
+      case ts.SyntaxKind.ForInStatement:
+        var forInStmt = <ts.ForInStatement>node;
+        this.emit('for(');
+        this.visit(forInStmt.initializer);
+        this.emit(' in ');
+        this.visit(forInStmt.expression);
+        this.emit(')');
+        this.visit(forInStmt.statement);
+        break;
+      case ts.SyntaxKind.PropertyAssignment:
+        break;
+      /* =============================== */
+      /* EXPRESSIONS
+      /* =============================== */
+      case ts.SyntaxKind.BinaryExpression:
+
         console.log('binary expression!');
-      var be = <ts.BinaryExpression>node;
-      var left = be.left;
-      var operator = be.operatorToken;
-      var right = be.right;
+        var be = <ts.BinaryExpression>node;
+        var left = be.left;
+        var operatorToken = be.operatorToken;
+        var right = be.right;
 
-      if (DEBUG)
         console.log('left ' + ts.SyntaxKind[left.kind]);
-      if (DEBUG)
         console.log('right ' + ts.SyntaxKind[right.kind])
 
             this.visit(left);
-      this.emit(' ' + operator.getText() + ' ');
-      this.visit(right);
-
-      break;
-    case ts.SyntaxKind.MethodDeclaration:
-      var md = <ts.MethodDeclaration>node;
-      if (DEBUG)
-        console.log('MethodDeclaration!');
-      this.visitFunctionLike(md);
-      break;
-    case ts.SyntaxKind.ShorthandPropertyAssignment:
-      break;
-    case ts.SyntaxKind.Identifier:
-      var id = <ts.Identifier>node;
-      if (DEBUG)
-        console.log('identifier!');
-      this.visitTypeName(id);
-      break;
-    case ts.SyntaxKind.DotToken:
-      this.emit('.');
-      break;
-    case ts.SyntaxKind.ThisKeyword:
-      this.emit('this');
-      break;
-    case ts.SyntaxKind.StringLiteral:
-      var sl = <ts.StringLiteral>node;
-      if (DEBUG)
-        console.log('String literal!');
-      this.emit(sl.getText());
-      break;
-    case ts.SyntaxKind.PropertyAccessExpression:
-      var pae = <ts.PropertyAccessExpression>node;
-      var lhs = pae.expression;
-      var name = pae.name;
-
-      /* Undefined, so break */
-      if (!lhs) {
+        this.emit(' ' + operatorToken.getText() + ' ');
+        this.visit(right);
         break;
-      }
+      case ts.SyntaxKind.PrefixUnaryExpression:
+        var pu = <ts.PrefixUnaryExpression>node;
+        this.visit(pu);
+        break;
+      case ts.SyntaxKind.PostfixUnaryExpression:
+        break;
+      case ts.SyntaxKind.ConditionalExpression:
+        break;
+      case ts.SyntaxKind.DeleteExpression:
+        break;
+      case ts.SyntaxKind.VoidExpression:
+        break;
+      case ts.SyntaxKind.TypeOfExpression:
+        break;
+      case ts.SyntaxKind.ParenthesizedExpression:
+        break;
+      case ts.SyntaxKind.ElementAccessExpression:
+        break;
+      case ts.SyntaxKind.PropertyAccessExpression:
+        var pae = <ts.PropertyAccessExpression>node;
+        var lhs = pae.expression;
+        var name = pae.name;
 
-      if (DEBUG)
-        console.log(ts.SyntaxKind[lhs.kind]);
-      this.visit(lhs);
-      this.visit(pae.dotToken);
-      this.visit(name);
+        /* Undefined, so break */
+        if (!lhs) {
+          break;
+        }
 
-      /* TODO: Explore when to put ;\n */
-      if (pae.parent.kind === ts.SyntaxKind.ExpressionStatement)
-        this.emit(';\n');
+        if (DEBUG)
+          console.log(ts.SyntaxKind[lhs.kind]);
+        this.visit(lhs);
+        this.visit(pae.dotToken);
+        this.visit(name);
 
-      break;
-    case ts.SyntaxKind.ReturnStatement:
-      if (DEBUG)
-        console.log('Return Statement!');
-      var rs = <ts.ReturnStatement>node;
-      this.emit('return');
+        /* TODO: Explore when to put ;\n */
+        if (pae.parent.kind === ts.SyntaxKind.ExpressionStatement)
+          this.emit(';');
 
-      if (rs.expression) {
-        this.emit(' ');
-        this.visit(rs.expression);
-      }
-      break;
+        break;
+      /* =================================== */
+      /* TYPES
+      /* =================================== */
+      case ts.SyntaxKind.TypeLiteral:
+        break;
+      case ts.SyntaxKind.UnionType:
+        break;
+      case ts.SyntaxKind.TypeReference:
+        break;
+      case ts.SyntaxKind.TypeAssertionExpression:
+        break;
+      case ts.SyntaxKind.TypeParameter:
+        break;
+      case ts.SyntaxKind.ArrayType:
+        var at = <ts.ArrayTypeNode>node;
+        break;
+      case ts.SyntaxKind.FunctionType:
+        break;
+      case ts.SyntaxKind.QualifiedName:
+        break;
+      case ts.SyntaxKind.Identifier:
+        var id = <ts.Identifier>node;
+        if (DEBUG)
+          console.log('identifier!');
+        this.visitTypeName(id);
+        break;
+      /* ========================================= */
+      /* KEYWORDS
+      /* ========================================= */
+      case ts.SyntaxKind.ExportKeyword:
+        if (DEBUG)
+          console.log('export keyword');
+        this.emit('export ');
+        break;
+      case ts.SyntaxKind.NumberKeyword:
+        this.emit('number ');
+        break;
+      case ts.SyntaxKind.StringKeyword:
+        this.emit('string ');
+        break;
+      case ts.SyntaxKind.VoidKeyword:
+        this.emit('void ');
+        break;
+      case ts.SyntaxKind.BooleanKeyword:
+        this.emit('boolean ');
+        break;
+      case ts.SyntaxKind.AnyKeyword:
+        this.emit('any ');
+        break;
+      /* =================================== */
+      /* CALL
+      /* =================================== */
+      case ts.SyntaxKind.Block:
+        if (DEBUG)
+          console.log('block!');
+        var block = <ts.Block>node;
+        this.visitBlock(block);
+        break;
+      case ts.SyntaxKind.NewExpression:
+        if (DEBUG)
+          console.log('new expression');
+        var newExp = <ts.NewExpression>node;
+        if (DEBUG)
+          console.log(newExp);
+
+        /* visitCall() */
+        var lhs = newExp.expression;
+        var typeArgs = newExp.typeArguments;
+        var args = newExp.arguments;
+        this.emit('new ');
+        this.visit(lhs);
+        this.emit('(');
+        /* TODO: Differentiate between TypeArgs and Args */
+        var argSize = args.length;
+        this.visitList(args);
+        this.emit(')');
+        break;
+      case ts.SyntaxKind.CallExpression:
+        var callExpr = <ts.CallExpression>node;
+        this.visit(callExpr.expression);
+        this.emit('(');
+        this.visitList(callExpr.arguments);
+        this.emit(')');
+        break;
+      case ts.SyntaxKind.SuperKeyword:
+        break;
+      /* =================================== */
+      /* LITERALS
+      /* =================================== */
+      case ts.SyntaxKind.NumericLiteral:
+        break;
+      case ts.SyntaxKind.StringLiteral:
+        var sl = <ts.StringLiteralTypeNode>node;
+        this.emit(sl.getText());
+        break;
+      case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
+        break;
+      case ts.SyntaxKind.TemplateMiddle:
+        break;
+      case ts.SyntaxKind.TemplateExpression:
+        break;
+      case ts.SyntaxKind.TemplateHead:
+        break;
+      case ts.SyntaxKind.TemplateTail:
+        break;
+      case ts.SyntaxKind.TemplateSpan:
+        break;
+      case ts.SyntaxKind.ArrayLiteralExpression:
+        break;
+      case ts.SyntaxKind.ObjectLiteralExpression:
+        break;
+      case ts.SyntaxKind.PropertyAssignment:
+        break;
+      case ts.SyntaxKind.ShorthandPropertyAssignment:
+        break;
+      case ts.SyntaxKind.TrueKeyword:
+        break;
+      case ts.SyntaxKind.FalseKeyword:
+        break;
+      case ts.SyntaxKind.NullKeyword:
+        break;
+      case ts.SyntaxKind.RegularExpressionLiteral:
+        break;
+      case ts.SyntaxKind.ThisKeyword:
+        this.emit('this');
+        break;
+      /* =================================== */
+      /* ELSE
+      /* =================================== */
+      case ts.SyntaxKind.DotToken:
+        this.emit('.');
+        break;
     }
   }
 
@@ -371,7 +617,7 @@ export class Transpiler {
     /* TODO: Visit type name */
     /* .... */
 
-    this.emit(' {\n');
+    this.emit(' {');
 
     if (DEBUG)
       console.log(decl);
@@ -388,37 +634,43 @@ export class Transpiler {
     /* Visit constructor declaration */
     /* Method declarations - function-like */
 
-    this.emit('}\n');
+    this.emit('}');
   }
 
-  visitConstructor(cd: ts.ConstructorDeclaration) {
-    if (DEBUG)
-      console.log('visitConstructor');
+  visitConstructor(constructorDecl: ts.ConstructorDeclaration) {}
 
-    if (DEBUG)
-      console.log(cd);
+  /* figure out what's happening here */
+  private visitParameters(parameters: ts.ParameterDeclaration[]) {
+    this.emit('(');
+    let firstInitParamIdx = 0;
+    for (; firstInitParamIdx < parameters.length; firstInitParamIdx++) {
+      // ObjectBindingPatterns are handled within the parameter visit.
+      let isOpt = parameters[firstInitParamIdx].initializer ||
+                  parameters[firstInitParamIdx].questionToken;
+      if (isOpt &&
+          parameters[firstInitParamIdx].name.kind !==
+              ts.SyntaxKind.ObjectBindingPattern) {
+        break;
+      }
+    }
 
-    this.emit('constructor (');
+    if (firstInitParamIdx !== 0) {
+      var requiredParams = parameters.slice(0, firstInitParamIdx);
+      this.visitList(requiredParams);
+    }
 
-    var params = cd.parameters;
-    var paramsSize = params.length;
-
-    /* VISIT PARAMETERS */
-    params.forEach((param, i) => {
-      this.visit(param.name);
-      if (i < paramsSize - 1)
-        this.emit(', ');
-    });
+    /* What is going on here though */
+    if (firstInitParamIdx !== parameters.length) {
+      if (firstInitParamIdx !== 0)
+        this.emit(',');
+      var positionalOptional =
+          parameters.slice(firstInitParamIdx, parameters.length);
+      // this.emit('[');
+      this.visitList(positionalOptional);
+      // this.emit(']');
+    }
 
     this.emit(')');
-
-    /* Constructor stuff yay */
-    this.emit('{\n');
-
-    /* Visit body of constructor */
-    this.visit(cd.body);
-
-    this.emit('}\n');
   }
 
   visitTypeName(typeName: ts.EntityName) {
@@ -433,35 +685,63 @@ export class Transpiler {
     this.emit(identifier);
   }
 
+  // private visitFunctionLike(fn: ts.FunctionLikeDeclaration, accessor?:
+  // string) {
+  //     if (fn.type) {
+  //       if (fn.kind === ts.SyntaxKind.ArrowFunction) {
+  //         // Type is silently dropped for arrow functions, not supported in
+  //         Dart.
+  //         this.emit('/*');
+  //         this.visit(fn.type);
+  //         this.emit('*/');
+  //       } else {
+  //         this.visit(fn.type);
+  //       }
+  //     }
+  //     if (accessor) this.emit(accessor);
+  //     if (fn.name) this.visit(fn.name);
+  //     // Dart does not even allow the parens of an empty param list on getter
+  //     if (accessor !== 'get') {
+  //       this.visitParameters(fn.parameters);
+  //     } else {
+  //       if (fn.parameters && fn.parameters.length > 0) {
+  //         this.reportError(fn, 'getter should not accept parameters');
+  //       }
+  //     }
+  //     if (fn.body) {
+  //       this.visit(fn.body);
+  //     } else {
+  //       this.emit(';');
+  //     }
+  //   }
+
   visitFunctionLike(fn: ts.FunctionLikeDeclaration, accessor?: string) {
-    if (DEBUG)
-      console.log('visitFunctionLike');
-    if (DEBUG)
-      console.log(fn);
 
-    /* TODO: Visit Decorators */
-    /* .... */
+    // asteriskToken
+    // name
+    // typeParameters
+    // parameters
+    // body
 
-    this.visit(fn.name);
+    if (fn.type)
+      this.visit(fn.type);
+    if (accessor)
+      this.emit(accessor);
 
-    this.emit('(');
-
-    /* TODO: Look at Method parameter declaration */
-    /* ... */
-    fn.parameters.forEach((param) => this.visit(param));
-
-    this.emit(')');
+    if (fn.name)
+      this.visit(fn.name);
+    /* TODO: Getters */
+    this.visitParameters(fn.parameters);
+    if (fn.body) {
+      this.emit(' {');
+      this.visit(fn.body);
+      this.emit('}');
+    } else {
+      this.emit(';');
+    }
 
     /* TODO: Look and see if return type information exists */
     /* .... */
-
-    this.emit(' {\n');
-
-    /* visit body of method declaration */
-    this.visit(fn.body);
-
-    this.emit('}\n');
-    2
   }
 
   /* This can probably also apply to ParameterDeclaration */
@@ -476,8 +756,7 @@ export class Transpiler {
       var _type = pd.type.getText();
       this.emit(': ' + _type);
     }
-
-    this.emit(';\n');
+    this.emit(';');
   }
 
   visitBlock(block: ts.Block) {
@@ -487,7 +766,7 @@ export class Transpiler {
       if (DEBUG)
         console.log(ts.SyntaxKind[statement.kind]);
       this.visit(statement);
-      this.emit(';\n');
+      this.emit(';');
     });
   }
 
@@ -500,38 +779,25 @@ export class Transpiler {
       console.log(statement);
   }
 
+  private visitDecorators(decorators: ts.NodeArray<ts.Decorator>) {
+    if (!decorators)
+      return;
+
+    decorators.forEach((d) => {
+      this.emit('@');
+      this.visit(d.expression);
+    });
+  }
+
   /*
    * TODO: Figure out if pString should be kept.
-    * Clean up: Don't need a case for each syntax kind since we are only
-   concerned with
-      property declarations (for now) to create the rename map.
-  */
+   * Clean up: Don't need a case for each syntax kind since we are only
+   * concerned with property declarations (for now) to create the rename map.
+   */
   traverse(node: ts.Node, typeChecker?: ts.TypeChecker, pString?: string) {
     if (DEBUG)
       console.log(node.kind + ': ' + ts.SyntaxKind[node.kind]);
     switch (node.kind) {
-    case ts.SyntaxKind.SourceFile:
-      break;
-    case ts.SyntaxKind.ClassDeclaration:
-      var cd = <ts.ClassDeclaration>node;
-      break;
-    case ts.SyntaxKind.PropertyAssignment:
-      break;
-    case ts.SyntaxKind.PropertyDeclaration:
-      var pd = <ts.PropertyDeclaration>node;
-      break;
-    case ts.SyntaxKind.Parameter:
-      var param = <ts.ParameterDeclaration>node;
-      break;
-    case ts.SyntaxKind.Constructor:
-      var constructor = <ts.ConstructorDeclaration>node;
-      break;
-    case ts.SyntaxKind.MethodDeclaration:
-      break;
-    case ts.SyntaxKind.ShorthandPropertyAssignment:
-      break;
-    case ts.SyntaxKind.BinaryExpression:
-      break;
     /* If the identifier's parent is a PropertyDeclaration, add it to the
      * dictionary */
     case ts.SyntaxKind.Identifier:
@@ -553,12 +819,6 @@ export class Transpiler {
         /* Add to rename map */
         this.assignNewPropertyName(id.text);
       }
-      break;
-    case ts.SyntaxKind.DotToken:
-      break;
-    case ts.SyntaxKind.PropertyAccessExpression:
-      var pae = <ts.PropertyAccessExpression>node;
-      var lhs = pae.expression;
       break;
     }
 
@@ -713,6 +973,19 @@ export class Transpiler {
     return this.getOutput();
   }
 
+  translateProgram(program: ts.Program): {[path: string] : string} {
+    var paths: {[path: string] : string} = {};
+    var typeChecker = program.getTypeChecker();
+    this.errors = [];
+    program.getSourceFiles()
+        .filter((sourceFile: ts.SourceFile) =>
+                    (!sourceFile.fileName.match(/\.d\.ts$/) &&
+                     !!sourceFile.fileName.match(/\.[jt]s$/)))
+        .forEach((f) => paths[f.fileName] = this.translate(f, typeChecker));
+    this.checkForErrors(program);
+    return paths;
+  }
+
   private checkForErrors(program: ts.Program) {
     var errors = this.errors;
     var diagnostics = program.getGlobalDiagnostics().concat(
@@ -740,24 +1013,21 @@ export class Transpiler {
 
   private getNodeKindInfo(sourceFile: ts.Node) {
     ts.forEachChild(sourceFile, (node) => {
-      if (DEBUG)
-        console.log(ts.SyntaxKind[node.kind] + ': ' + node.kind);
+      // if (DEBUG)
+      console.log(ts.SyntaxKind[node.kind] + ': ' + node.kind);
       this.getNodeKindInfo(node);
     });
   }
 
-  translateProgram(program: ts.Program): {[path: string] : string} {
-    var paths: {[path: string] : string} = {};
-    var typeChecker = program.getTypeChecker();
-    this.errors = [];
-    program.getSourceFiles()
-        .filter((sourceFile: ts.SourceFile) =>
-                    (!sourceFile.fileName.match(/\.d\.ts$/) &&
-                     !!sourceFile.fileName.match(/\.[jt]s$/)))
-        .forEach((f) => paths[f.fileName] = this.translate(f, typeChecker));
-    this.checkForErrors(program);
-    return paths;
+  visitList(nodes: ts.Node[], separator: string = ',') {
+    nodes.forEach((node, i) => {
+      this.visit(node);
+      if (i < nodes.length - 1)
+        this.emit(separator);
+    });
   }
+
+  visitEach(nodes: ts.Node[]) { nodes.forEach((node) => this.visit(node)); }
 }
 
 /*
