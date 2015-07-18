@@ -31,10 +31,9 @@ var TSC_OPTIONS = {
   noExternalResolve : false,
   declarationFiles : true,
   // noEmitOnError: true - currently not possible because TS doesn't recognize
-  // ES6 collections
-  //                       like Map, WeakMap, etc
+  // ES6 collection like Map, WeakMap, etc
   // noImplicitAny: true,
-  typescript : typescript,
+  typescript : require('typescript'),
 };
 
 // ts.createProjects takes compiler options
@@ -67,8 +66,8 @@ gulp.task('clean', function(cb) {
  */
 gulp.task('compile', function() {
   var sourceTsFiles = [
-    './src/*.ts', // path to typescript files
-    './typings/**/*.ts'
+    './src/*.ts' // path to typescript files
+    // './typings/**/*.ts'
   ]; // reference to library .d.ts files
 
   var tsResult = gulp.src(sourceTsFiles)
