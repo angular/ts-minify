@@ -1,15 +1,16 @@
-///<reference path="../typings/node/node.d.ts"/>
-///<reference path="../typings/typescript/typescript.d.ts"/>
+/// <reference path='../node_modules/typescript/bin/typescript.d.ts' />
 
 import * as ts from 'typescript';
 import * as fs from 'fs';
-// import * as fsx from 'fs-extra/';
+import * as fsx from 'fs-extra'; // why does this say its not found
 import * as util from 'util';
 import * as path from 'path';
+var _Map = require('es6-map');
 
 /* TranspilerOptions Class will go here */
 
-const DEBUG = true;
+const DEBUG = false;
+type StringMap = { [s: string]: string; };
 
 export const COMPILER_OPTIONS: ts.CompilerOptions = {
   allowNonTsExtensions : true,
@@ -49,7 +50,8 @@ export class Transpiler {
    * object which has what type its parent is (left hand side expression) and
    * its new name.
    */
-  renameMap = new Map();
+  // renameMap: Map<string, string> = new Map();
+  renameMap = new _Map();
   /*
    * List of "root" names, and the last property name assigned to one of its
    * properties.
@@ -59,7 +61,7 @@ export class Transpiler {
    * use
    * getNextLateralPropertyName per Class/"root".
    */
-  prevNameMap = new Map();
+  prevNameMap = new _Map();
 
   /* For "stupid mode" */
   prevName: string = '';
@@ -91,6 +93,8 @@ export class Transpiler {
 
   createCompilerHost(): ts.CompilerHost {
 
+    /* getDefaultLibFileName is part of LanguageServiceHost and CompilerHost
+     * objects */
     var defaultLibFileName =
         ts.getDefaultLibFileName(this.getCompilerOptions());
 
@@ -148,6 +152,7 @@ export class Transpiler {
           this.getNodeKindInfo(f);
           var renamedCode = this.translate(f, typeChecker);
           var outputFile = this.getOutputPath(f.fileName);
+          console.log(path.dirname(outputFile));
           // fsx.mkdirsSync(path.dirname(outputFile));
           fs.writeFileSync(outputFile, renamedCode);
         });
@@ -198,24 +203,48 @@ export class Transpiler {
           this.emit(' = ');
           if (DEBUG)
             console.log(vd.initializer.kind + ' ' +
-                        ts.SyntaxKind[vd.initializer.kind]);
+                        (<any>ts).SyntaxKind[vd.initializer.kind]);
           /* New Expression */
           this.visit(vd.initializer);
         }
         break;
       case ts.SyntaxKind.ClassDeclaration:
+        console.log('CLASS DECLARATION');
         var cd = <ts.ClassDeclaration>node;
+        // console.log(cd);
         if (DEBUG)
           console.log(cd);
         this.visitClassLike('class ', cd);
         break;
       case ts.SyntaxKind.InterfaceDeclaration:
+        console.log('interface declaration');
+        var interfaceDecl = <ts.InterfaceDeclaration>node;
+        // console.log(interfaceDecl);
+        this.visitClassLike('interface ', interfaceDecl);
         break;
       case ts.SyntaxKind.HeritageClause:
+        // console.log('HERITAGE CLAUSE');
+        var hClause = <ts.HeritageClause>node;
+        // console.log(hClause);
+        this.emit(' ' + hClause.getText());
         break;
       case ts.SyntaxKind.EnumDeclaration:
+        var enumDecl = <ts.EnumDeclaration>node;
+        this.emit('enum ');
+        this.visit(enumDecl.name);
+        this.emit('{ ');
+        this.visitList(enumDecl.members);
+        this.emit('}');
         break;
       case ts.SyntaxKind.EnumMember:
+        console.log('enum member');
+        var enumMemb = <ts.EnumMember>node;
+        this.visit(enumMemb.name);
+
+        if (enumMemb.initializer) {
+          this.emit(' = ');
+          this.visit(enumMemb.initializer);
+        }
         break;
       case ts.SyntaxKind.Constructor:
         var constructor = <ts.ConstructorDeclaration>node;
@@ -228,7 +257,9 @@ export class Transpiler {
         /* .... */
         this.emit('constructor ');
         /* Visit parameters */
+        this.emit('(');
         this.visitParameters(params);
+        this.emit(')');
 
         /* Constructor stuff yay */
         this.emit('{');
@@ -238,17 +269,27 @@ export class Transpiler {
         break;
       case ts.SyntaxKind.PropertyDeclaration:
         var pd = <ts.PropertyDeclaration>node;
-        if (DEBUG)
-          console.log('propertydeclaration!');
+        // if (DEBUG)
+        console.log('propertydeclaration!');
         this.visitProperty(pd);
         break;
       case ts.SyntaxKind.GetAccessor:
+        console.log('getAccessor');
+        var getAccessor = <ts.AccessorDeclaration>node;
+        console.log(getAccessor);
+        // this.visitDeclarationMetadata(<ts.MethodDeclaration>node);
+        this.visitFunctionLike(getAccessor, 'get ');
         break;
       case ts.SyntaxKind.SetAccessor:
-        break;
-      case ts.SyntaxKind.SemicolonClassElement:
-        /* ??? */
-        break;
+        console.log('setAccessor');
+        var setAccessor = <ts.AccessorDeclaration>node;
+        console.log(setAccessor);
+        // this.visitDeclarationMetadata(<ts.MethodDeclaration>node);
+        this.visitFunctionLike(setAccessor, 'set ');
+      break;
+      // case ts.SyntaxKind.SemicolonClassElement:
+      //   /* ??? */
+      //   break;
       case ts.SyntaxKind.MethodDeclaration:
         var md = <ts.MethodDeclaration>node;
         if (DEBUG)
@@ -258,27 +299,68 @@ export class Transpiler {
       case ts.SyntaxKind.FunctionDeclaration:
         var funcDecl = <ts.FunctionDeclaration>node;
         this.visitDecorators(funcDecl.decorators);
-        // Visit function decorators
-        // function typeparameters
-        this.emit('function '); // where should this emit go
         this.visitFunctionLike(funcDecl);
         break;
       case ts.SyntaxKind.ArrowFunction:
         var arrowFunc = <ts.ArrowFunction>node;
+        this.emit('(');
         this.visitParameters(arrowFunc.parameters);
+        this.emit(')');
         this.emit('=>');
+        this.emit('{');
         this.visit(arrowFunc.body);
+        this.emit('}');
         break;
       case ts.SyntaxKind.FunctionExpression:
         var fe = <ts.FunctionExpression>node;
         this.visitFunctionLike(fe);
         break;
       case ts.SyntaxKind.PropertySignature:
+        console.log('property signature');
+        var propSig = <ts.PropertyDeclaration>node;
+        this.visitProperty(propSig);
+        break;
+      case ts.SyntaxKind.IndexSignature:
+        console.log('index signature');
+        var idxSig = <ts.IndexSignatureDeclaration>node;
+        console.log(idxSig);
+        this.emit('[ ');
+        this.visitDecorators(idxSig.decorators);
+        if (idxSig.parameters) this.visitParameters(idxSig.parameters);
+        this.emit(' ]');
+
+        if (idxSig.type) {
+          this.emit(' : ');
+          this.visit(idxSig.type);
+        }
+        this.emit(';');
         break;
       case ts.SyntaxKind.MethodSignature:
+        console.log('method signature!');
+        var methodSig = <ts.FunctionLikeDeclaration>node;
+        if (methodSig.modifiers) this.visitEach(methodSig.modifiers);
+        this.visitFunctionLike(methodSig);
+        break;
+      case ts.SyntaxKind.ConstructSignature:
+        var constSig = <ts.SignatureDeclaration>node;
+        console.log('construct signature!');
+        console.log(constSig);
+        if (constSig.typeParameters) {
+          this.emit('(');
+          this.visitList(callSig.typeParameters);
+          this.emit(')');
+        }
+        this.emit('new ');
+        this.emit('(');
+        this.visitParameters(constSig.parameters);
+        this.emit(')');
+        this.emit(';');
         break;
       case ts.SyntaxKind.Parameter:
+        // console.log('parameter!');
         var paramDecl = <ts.ParameterDeclaration>node;
+
+        // console.log(paramDecl);
 
         // visit decorators
         // check for dotdotdot token
@@ -288,6 +370,12 @@ export class Transpiler {
         // initializer
 
         this.visitDecorators(paramDecl.decorators);
+
+        // visit modifiers
+        if (paramDecl.modifiers) {
+          this.visitEach(paramDecl.modifiers);
+        }
+
         if (paramDecl.dotDotDotToken)
           this.emit('...');
         this.visit(paramDecl.name);
@@ -301,18 +389,23 @@ export class Transpiler {
           this.emit('=');
           this.visit(paramDecl.initializer);
         }
+        break;
 
+      case ts.SyntaxKind.ModuleDeclaration:
+        console.log('module declaration!');
+        var modDecl = <ts.ModuleDeclaration>node;
+        console.log(modDecl);
+        this.visitDecorators(modDecl.decorators);
+        this.emit('module ');
+        this.visit(modDecl.name);
+        this.emit('{ ');
+        this.visit(modDecl.body);
+        this.emit(' }');
         break;
-      case ts.SyntaxKind.ObjectBindingPattern:
-        break;
-      case ts.SyntaxKind.BindingElement:
-        break;
-      case ts.SyntaxKind.StaticKeyword:
-        break;
-      case ts.SyntaxKind.PrivateKeyword:
-        break;
-      case ts.SyntaxKind.ProtectedKeyword:
-        break;
+      // case ts.SyntaxKind.ObjectBindingPattern:
+      //   break;
+      // case ts.SyntaxKind.BindingElement:
+      //   break;
       /* =================================== */
       /* STATEMENTS
       /* =================================== */
@@ -343,8 +436,9 @@ export class Transpiler {
           console.log('expression statement!');
         var es = <ts.ExpressionStatement>node;
         if (DEBUG)
-          console.log(ts.SyntaxKind[es.expression.kind]);
+          console.log((<any>ts).SyntaxKind[es.expression.kind]);
         this.visit(es.expression);
+        this.emit(';');
         break;
       case ts.SyntaxKind.SwitchStatement:
         var switchStatement = <ts.SwitchStatement>node;
@@ -361,7 +455,7 @@ export class Transpiler {
         break;
       case ts.SyntaxKind.CaseClause:
         var caseClause = <ts.CaseClause>node;
-        this.emit('case');
+        this.emit('case ');
         this.visit(caseClause.expression);
         this.emit(':');
         this.visitEach(caseClause.statements);
@@ -378,7 +472,7 @@ export class Transpiler {
         this.emit(')');
         this.visit(ifStatement.thenStatement);
         if (ifStatement.elseStatement) {
-          this.emit('else');
+          this.emit('else ');
           this.visit(ifStatement.elseStatement);
         }
         break;
@@ -391,22 +485,20 @@ export class Transpiler {
         if (forStatement.condition)
           this.visit(forStatement.condition);
         this.emit(';');
-        if (forStatement.iterator)
-          this.visit(forStatement.iterator);
+        if (forStatement.incrementor)
+          this.visit(forStatement.incrementor);
         this.emit(')');
         this.visit(forStatement.statement);
         break;
       /* PICK UP HERE */
       case ts.SyntaxKind.ForInStatement:
         var forInStmt = <ts.ForInStatement>node;
-        this.emit('for(');
+        this.emit('for( ');
         this.visit(forInStmt.initializer);
         this.emit(' in ');
         this.visit(forInStmt.expression);
         this.emit(')');
         this.visit(forInStmt.statement);
-        break;
-      case ts.SyntaxKind.PropertyAssignment:
         break;
       /* =============================== */
       /* EXPRESSIONS
@@ -419,30 +511,57 @@ export class Transpiler {
         var operatorToken = be.operatorToken;
         var right = be.right;
 
-        console.log('left ' + ts.SyntaxKind[left.kind]);
-        console.log('right ' + ts.SyntaxKind[right.kind])
+        console.log('left ' + (<any>ts).SyntaxKind[left.kind]);
+        console.log('right ' + (<any>ts).SyntaxKind[right.kind])
 
-            this.visit(left);
+        this.visit(left);
         this.emit(' ' + operatorToken.getText() + ' ');
         this.visit(right);
         break;
       case ts.SyntaxKind.PrefixUnaryExpression:
         var pu = <ts.PrefixUnaryExpression>node;
-        this.visit(pu);
+        this.emit(ts.tokenToString(pu.operator));
+        this.visit(pu.operand);
         break;
-      case ts.SyntaxKind.PostfixUnaryExpression:
-        break;
+      // case ts.SyntaxKind.PostfixUnaryExpression:
+      //   break;
       case ts.SyntaxKind.ConditionalExpression:
+        console.log('conditional expression');
+        var condExp = <ts.ConditionalExpression>node;
+        console.log(condExp);
+        // condition
+        // questionToken
+        // whenTrue
+        // colonToken
+        // whenFalse
+        this.visit(condExp.condition);
+        this.visit(condExp.questionToken);
+        this.visit(condExp.whenTrue);
+        this.visit(condExp.colonToken);
+        this.visit(condExp.whenFalse);
         break;
-      case ts.SyntaxKind.DeleteExpression:
-        break;
-      case ts.SyntaxKind.VoidExpression:
-        break;
-      case ts.SyntaxKind.TypeOfExpression:
-        break;
+      // case ts.SyntaxKind.DeleteExpression:
+      //   break;
+      // case ts.SyntaxKind.VoidExpression:
+      //   break;
+      // case ts.SyntaxKind.TypeOfExpression:
+      //   break;
       case ts.SyntaxKind.ParenthesizedExpression:
+        console.log('parenthesized expression!');
+        var parenExp = <ts.ParenthesizedExpression>node;
+        console.log(parenExp);
+        this.emit('(');
+        this.visit(parenExp.expression);
+        this.emit(')');
         break;
       case ts.SyntaxKind.ElementAccessExpression:
+        console.log('element access expression');
+        var eltAccessExp = <ts.ElementAccessExpression>node;
+        //console.log(eltAccessExp);
+        this.visit(eltAccessExp.expression);
+        this.emit('[');
+        this.visit(eltAccessExp.argumentExpression);
+        this.emit(']');
         break;
       case ts.SyntaxKind.PropertyAccessExpression:
         var pae = <ts.PropertyAccessExpression>node;
@@ -455,36 +574,51 @@ export class Transpiler {
         }
 
         if (DEBUG)
-          console.log(ts.SyntaxKind[lhs.kind]);
+          console.log((<any>ts).SyntaxKind[lhs.kind]);
         this.visit(lhs);
         this.visit(pae.dotToken);
-        this.visit(name);
-
-        /* TODO: Explore when to put ;\n */
-        if (pae.parent.kind === ts.SyntaxKind.ExpressionStatement)
-          this.emit(';');
+        this.visit(name);       
 
         break;
       /* =================================== */
       /* TYPES
       /* =================================== */
       case ts.SyntaxKind.TypeLiteral:
+        console.log('type literal!');
+        var typeLit = <ts.TypeLiteralNode>node;
+        this.emit('{ ');
+        this.visitEach(typeLit.members);
+        this.emit(' }');
         break;
-      case ts.SyntaxKind.UnionType:
+      case ts.SyntaxKind.FirstTypeNode:
+        console.log('first type node');
+        this.emit(node.getText());
         break;
-      case ts.SyntaxKind.TypeReference:
-        break;
+      // case ts.SyntaxKind.UnionType:
+      //   break;
+      // case ts.SyntaxKind.TypeReference:
+      //   break;
       case ts.SyntaxKind.TypeAssertionExpression:
+        console.log('type assertion expression!');
+        var typeAssertExp = <ts.TypeAssertion>node;
+        if (typeAssertExp.type) {
+          this.emit('<');
+          this.visit(typeAssertExp.type);
+          this.emit('>');
+        }
+        if (typeAssertExp.expression) {
+          this.visit(typeAssertExp.expression);
+        }
         break;
-      case ts.SyntaxKind.TypeParameter:
-        break;
-      case ts.SyntaxKind.ArrayType:
-        var at = <ts.ArrayTypeNode>node;
-        break;
-      case ts.SyntaxKind.FunctionType:
-        break;
-      case ts.SyntaxKind.QualifiedName:
-        break;
+      // case ts.SyntaxKind.TypeParameter:
+      //   break;
+      // case ts.SyntaxKind.ArrayType:
+      //   var at = <ts.ArrayTypeNode>node;
+      //   break;
+      // case ts.SyntaxKind.FunctionType:
+      //   break;
+      // case ts.SyntaxKind.QualifiedName:
+      //   break;
       case ts.SyntaxKind.Identifier:
         var id = <ts.Identifier>node;
         if (DEBUG)
@@ -494,9 +628,13 @@ export class Transpiler {
       /* ========================================= */
       /* KEYWORDS
       /* ========================================= */
+      case ts.SyntaxKind.PrivateKeyword:
+        this.emit(' private ');
+        break;
+      case ts.SyntaxKind.PublicKeyword:
+        this.emit(' public ');
+      break;
       case ts.SyntaxKind.ExportKeyword:
-        if (DEBUG)
-          console.log('export keyword');
         this.emit('export ');
         break;
       case ts.SyntaxKind.NumberKeyword:
@@ -513,6 +651,18 @@ export class Transpiler {
         break;
       case ts.SyntaxKind.AnyKeyword:
         this.emit('any ');
+        break;
+      case ts.SyntaxKind.QuestionToken:
+        this.emit(' ? ');
+        break;
+      case ts.SyntaxKind.ColonToken:
+        this.emit(' : ');
+        break;
+      case ts.SyntaxKind.StaticKeyword:
+        this.emit(' static ');
+        break;
+      case ts.SyntaxKind.ProtectedKeyword:
+        this.emit(' protected ');
         break;
       /* =================================== */
       /* CALL
@@ -550,43 +700,92 @@ export class Transpiler {
         this.emit(')');
         break;
       case ts.SyntaxKind.SuperKeyword:
+        this.emit('super');
+       break;
+      case ts.SyntaxKind.CallSignature:
+        var callSig = <ts.SignatureDeclaration>node;
+        console.log('callsig');
+        console.log(callSig);
+        if (callSig.typeParameters) {
+          this.emit('(');
+          this.visitList(callSig.typeParameters);
+          this.emit(')');
+        }
+
+        if (callSig.parameters) {
+          this.emit('(');
+          this.visitParameters(callSig.parameters);  
+          this.emit(')');
+        }
+
+        if (callSig.type) {
+          this.emit(' : ');
+          this.visit(callSig.type);
+        }
+
+        this.emit(';');
         break;
       /* =================================== */
       /* LITERALS
       /* =================================== */
-      case ts.SyntaxKind.NumericLiteral:
+      //case ts.SyntaxKind.NumericLiteral:
+      //  break;
+      case ts.SyntaxKind.FirstLiteralToken:
+        this.emit(node.getText());
         break;
       case ts.SyntaxKind.StringLiteral:
-        var sl = <ts.StringLiteralTypeNode>node;
+        var sl = <ts.StringLiteral>node;
         this.emit(sl.getText());
         break;
-      case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
-        break;
-      case ts.SyntaxKind.TemplateMiddle:
-        break;
-      case ts.SyntaxKind.TemplateExpression:
-        break;
-      case ts.SyntaxKind.TemplateHead:
-        break;
-      case ts.SyntaxKind.TemplateTail:
-        break;
-      case ts.SyntaxKind.TemplateSpan:
-        break;
+      // case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
+      //   break;
+      // case ts.SyntaxKind.TemplateMiddle:
+      //   break;
+      // case ts.SyntaxKind.TemplateExpression:
+      //   break;
+      // case ts.SyntaxKind.TemplateHead:
+      //   break;
+      // case ts.SyntaxKind.TemplateTail:
+      //   break;
+      // case ts.SyntaxKind.TemplateSpan:
+      //   break;
       case ts.SyntaxKind.ArrayLiteralExpression:
+        var arrLitExp = <ts.ArrayLiteralExpression>node;
+        this.emit('[');
+        this.visitList(arrLitExp.elements);
+        this.emit(']');
         break;
       case ts.SyntaxKind.ObjectLiteralExpression:
+        console.log('object literal expression!');
+        var objLitExp = <ts.ObjectLiteralExpression>node;
+        //console.log(objLitExp);
+        this.emit('{ ');
+        this.visitList(objLitExp.properties);
+        this.emit(' }');
         break;
       case ts.SyntaxKind.PropertyAssignment:
+        var propAssign = <ts.PropertyAssignment>node;
+        console.log('property assignment!');
+        // console.log(propAssign);
+        this.visit(propAssign.name);
+        if (propAssign.questionToken) this.visit(propAssign.questionToken);
+        this.emit(':');
+        if (propAssign.initializer) this.visit(propAssign.initializer);
         break;
-      case ts.SyntaxKind.ShorthandPropertyAssignment:
-        break;
+      // case ts.SyntaxKind.ShorthandPropertyAssignment:
+      //   break;
       case ts.SyntaxKind.TrueKeyword:
+        this.emit('true');
         break;
       case ts.SyntaxKind.FalseKeyword:
+        this.emit('false');
         break;
-      case ts.SyntaxKind.NullKeyword:
-        break;
+      // case ts.SyntaxKind.NullKeyword:
+      //   break;
       case ts.SyntaxKind.RegularExpressionLiteral:
+        console.log('regex exp!');
+        var regexLit = <ts.LiteralExpression>node;
+        this.emit(regexLit.getText());
         break;
       case ts.SyntaxKind.ThisKeyword:
         this.emit('this');
@@ -597,12 +796,17 @@ export class Transpiler {
       case ts.SyntaxKind.DotToken:
         this.emit('.');
         break;
+      case ts.SyntaxKind.EndOfFileToken:
+        break;
+      default:
+        console.log('Unsupported node type (' + node.kind + ') ' + (<any>ts).SyntaxKind[node.kind] + ': ' +
+                              node.getFullText());
+        break;
     }
   }
 
-  visitClassLike(keyword: string, decl: ts.ClassDeclaration) {
-    /* TODO: Visit decorators*/
-    /* ... */
+  visitClassLike(keyword: string, decl: (ts.ClassDeclaration | ts.InterfaceDeclaration)) {
+    this.visitDecorators(decl.decorators);
 
     if (DEBUG)
       console.log(decl.modifiers);
@@ -617,6 +821,17 @@ export class Transpiler {
     /* TODO: Visit type name */
     /* .... */
 
+    /* typeParameters */
+    if (decl.typeParameters) {
+      this.emit('<');
+      this.visitList(decl.typeParameters);
+      this.emit('>');
+    }
+
+    if (decl.heritageClauses) {
+      this.visitEach(decl.heritageClauses);
+    }
+
     this.emit(' {');
 
     if (DEBUG)
@@ -625,7 +840,7 @@ export class Transpiler {
       if (DEBUG)
         console.log(memb);
       if (DEBUG)
-        console.log(memb.kind + ': ' + ts.SyntaxKind[memb.kind]);
+        console.log(memb.kind + ': ' + (<any>ts).SyntaxKind[memb.kind]);
       this.visit(memb);
     });
 
@@ -641,7 +856,7 @@ export class Transpiler {
 
   /* figure out what's happening here */
   private visitParameters(parameters: ts.ParameterDeclaration[]) {
-    this.emit('(');
+    // this.emit('(');
     let firstInitParamIdx = 0;
     for (; firstInitParamIdx < parameters.length; firstInitParamIdx++) {
       // ObjectBindingPatterns are handled within the parameter visit.
@@ -665,12 +880,10 @@ export class Transpiler {
         this.emit(',');
       var positionalOptional =
           parameters.slice(firstInitParamIdx, parameters.length);
-      // this.emit('[');
       this.visitList(positionalOptional);
-      // this.emit(']');
     }
 
-    this.emit(')');
+    // this.emit(')');
   }
 
   visitTypeName(typeName: ts.EntityName) {
@@ -685,53 +898,45 @@ export class Transpiler {
     this.emit(identifier);
   }
 
-  // private visitFunctionLike(fn: ts.FunctionLikeDeclaration, accessor?:
-  // string) {
-  //     if (fn.type) {
-  //       if (fn.kind === ts.SyntaxKind.ArrowFunction) {
-  //         // Type is silently dropped for arrow functions, not supported in
-  //         Dart.
-  //         this.emit('/*');
-  //         this.visit(fn.type);
-  //         this.emit('*/');
-  //       } else {
-  //         this.visit(fn.type);
-  //       }
-  //     }
-  //     if (accessor) this.emit(accessor);
-  //     if (fn.name) this.visit(fn.name);
-  //     // Dart does not even allow the parens of an empty param list on getter
-  //     if (accessor !== 'get') {
-  //       this.visitParameters(fn.parameters);
-  //     } else {
-  //       if (fn.parameters && fn.parameters.length > 0) {
-  //         this.reportError(fn, 'getter should not accept parameters');
-  //       }
-  //     }
-  //     if (fn.body) {
-  //       this.visit(fn.body);
-  //     } else {
-  //       this.emit(';');
-  //     }
-  //   }
-
   visitFunctionLike(fn: ts.FunctionLikeDeclaration, accessor?: string) {
 
+    console.log('function like');
+    // console.log(fn);
+
+    // decorators
     // asteriskToken
     // name
     // typeParameters
     // parameters
+    // type
     // body
 
-    if (fn.type)
-      this.visit(fn.type);
-    if (accessor)
-      this.emit(accessor);
+    this.visitDecorators(fn.decorators);
+    if (fn.asteriskToken) 
+      this.visit(fn.asteriskToken);
 
-    if (fn.name)
+    if (accessor) this.emit(accessor);
+    
+    if (fn.parent.kind !== ts.SyntaxKind.ClassDeclaration 
+      && fn.parent.kind !== ts.SyntaxKind.InterfaceDeclaration) {
+      this.emit('function '); // where should this emit go
+    }
+
+    if (fn.name) {
       this.visit(fn.name);
-    /* TODO: Getters */
+    }
+
+    this.emit('(');
     this.visitParameters(fn.parameters);
+    this.emit(')');
+
+    if (fn.type) {
+      this.emit(' : ');
+      console.log('fn.type.kind ' + (<any>ts).SyntaxKind[fn.type.kind]);
+      this.visit(fn.type);
+    }
+    
+    /* TODO: Getters */
     if (fn.body) {
       this.emit(' {');
       this.visit(fn.body);
@@ -746,8 +951,20 @@ export class Transpiler {
 
   /* This can probably also apply to ParameterDeclaration */
   visitProperty(pd: ts.PropertyDeclaration) {
-    if (DEBUG)
-      console.log('visitProperty');
+    console.log('propertydeclaration!');
+    console.log(pd);
+
+    this.visitDecorators(pd.decorators);
+
+    // visit modifiers
+    if (pd.modifiers) {
+      pd.modifiers.forEach((modifier)  => {
+        console.log(modifier.kind);
+        console.log()
+        this.visit(modifier);
+      });
+    }
+
     this.visit(pd.name);
     if (pd.questionToken)
       this.emit('?');
@@ -756,6 +973,12 @@ export class Transpiler {
       var _type = pd.type.getText();
       this.emit(': ' + _type);
     }
+
+    if (pd.initializer) {
+      this.emit(' = ');
+      this.visit(pd.initializer);
+    }
+
     this.emit(';');
   }
 
@@ -764,9 +987,8 @@ export class Transpiler {
       console.log('visitBlock');
     block.statements.forEach((statement) => {
       if (DEBUG)
-        console.log(ts.SyntaxKind[statement.kind]);
+        console.log((<any>ts).SyntaxKind[statement.kind]);
       this.visit(statement);
-      this.emit(';');
     });
   }
 
@@ -796,7 +1018,7 @@ export class Transpiler {
    */
   traverse(node: ts.Node, typeChecker?: ts.TypeChecker, pString?: string) {
     if (DEBUG)
-      console.log(node.kind + ': ' + ts.SyntaxKind[node.kind]);
+      console.log(node.kind + ': ' + (<any>ts).SyntaxKind[node.kind]);
     switch (node.kind) {
     /* If the identifier's parent is a PropertyDeclaration, add it to the
      * dictionary */
@@ -804,9 +1026,9 @@ export class Transpiler {
       var id = <ts.Identifier>node;
       var enumKind = id.parent.kind;
       if (DEBUG)
-        console.log('gparent: ' + ts.SyntaxKind[id.parent.parent.kind]);
+        console.log('gparent: ' + (<any>ts).SyntaxKind[id.parent.parent.kind]);
       if (DEBUG)
-        console.log('parent: ' + ts.SyntaxKind[enumKind]);
+        console.log('parent: ' + (<any>ts).SyntaxKind[enumKind]);
       if (DEBUG)
         console.log('id.text ' + id.text);
       if (DEBUG)
@@ -840,9 +1062,10 @@ export class Transpiler {
     }
   }
 
-  printMap(map: Map<any, any>) {
+  printMap(map) {
     if (DEBUG)
       console.log('============ Rename Map ===============');
+
     map.forEach(function(value, key) {
       if (DEBUG)
         console.log(key + " = " + value);
@@ -1014,14 +1237,14 @@ export class Transpiler {
   private getNodeKindInfo(sourceFile: ts.Node) {
     ts.forEachChild(sourceFile, (node) => {
       // if (DEBUG)
-      console.log(ts.SyntaxKind[node.kind] + ': ' + node.kind);
+      console.log((<any>ts).SyntaxKind[node.kind] + ': ' + node.kind);
       this.getNodeKindInfo(node);
     });
   }
 
   visitList(nodes: ts.Node[], separator: string = ',') {
     nodes.forEach((node, i) => {
-      this.visit(node);
+    this.visit(node);
       if (i < nodes.length - 1)
         this.emit(separator);
     });
@@ -1089,8 +1312,8 @@ class Output {
   getResult(): string { return this.result; }
 }
 
-if (DEBUG) {
-  var transpiler = new Transpiler();
-  transpiler.stupidMode = true; // Flag to enable stupid mode for now.
-  transpiler.transpile([ '../../test/input/basic_greeter.ts' ]);
-}
+
+var transpiler = new Transpiler();
+transpiler.stupidMode = true; // Flag to enable stupid mode for now.
+// transpiler.transpile([ '../../test/input/basic_greeter.ts' ]);
+transpiler.transpile([ '../../test/input/hello_fn.ts' ]);
