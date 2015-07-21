@@ -1,5 +1,5 @@
 /// <reference path="../../typings/mocha/mocha.d.ts"/>
-/// <reference path="../typings/chai/chai.d.ts"/>
+/// <reference path="../../typings/chai/chai.d.ts"/>
 
 import {Transpiler} from '../../src/main';
 import * as ts from 'typescript';
@@ -38,7 +38,7 @@ describe('basic property renaming', function() {
     if (TEST_DEBUG)
       console.log(input);
     var output =
-        'class Greeter {\na: string;\nconstructor (g){\nthis.a = g;\n}\n}\n';
+        'class Greeter {a: string;constructor (g){this.a = g;}}';
     if (TEST_DEBUG)
       console.log(output);
     if (TEST_DEBUG)
@@ -46,6 +46,14 @@ describe('basic property renaming', function() {
     if (TEST_DEBUG)
       console.log(expectTranslate(input));
 
+    expectTranslate(input).to.equal(output);
+  })
+});
+
+describe('function declaration', function() {
+  it('correctly outputs a function declaration', function() {
+    var input = `function hello() { console.log('hello'); }`;
+    var output = `function hello() {console.log('hello');}`;
     expectTranslate(input).to.equal(output);
   })
 });

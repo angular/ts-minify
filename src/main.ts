@@ -298,7 +298,6 @@ export class Transpiler {
         break;
       case ts.SyntaxKind.FunctionDeclaration:
         var funcDecl = <ts.FunctionDeclaration>node;
-        this.visitDecorators(funcDecl.decorators);
         this.visitFunctionLike(funcDecl);
         break;
       case ts.SyntaxKind.ArrowFunction:
@@ -391,17 +390,6 @@ export class Transpiler {
         }
         break;
 
-      case ts.SyntaxKind.ModuleDeclaration:
-        console.log('module declaration!');
-        var modDecl = <ts.ModuleDeclaration>node;
-        console.log(modDecl);
-        this.visitDecorators(modDecl.decorators);
-        this.emit('module ');
-        this.visit(modDecl.name);
-        this.emit('{ ');
-        this.visit(modDecl.body);
-        this.emit(' }');
-        break;
       // case ts.SyntaxKind.ObjectBindingPattern:
       //   break;
       // case ts.SyntaxKind.BindingElement:
@@ -425,9 +413,11 @@ export class Transpiler {
         this.emit(';');
         break;
       case ts.SyntaxKind.VariableStatement:
-        if (DEBUG)
-          console.log('Variable Statement');
+        console.log('Variable Statement');
         var vs = <ts.VariableStatement>node;
+        // console.log(vs);
+        this.visitDecorators(vs.decorators);
+        if (vs.modifiers) this.visitEach(vs.modifiers);
         this.visit(vs.declarationList);
         this.emit(';');
         break;
@@ -470,10 +460,13 @@ export class Transpiler {
         this.emit('if (');
         this.visit(ifStatement.expression);
         this.emit(')');
+        this.emit('{');
         this.visit(ifStatement.thenStatement);
+        this.emit('}');
         if (ifStatement.elseStatement) {
-          this.emit('else ');
+          this.emit('else {');
           this.visit(ifStatement.elseStatement);
+          this.emit('}');
         }
         break;
       case ts.SyntaxKind.ForStatement:
@@ -528,7 +521,7 @@ export class Transpiler {
       case ts.SyntaxKind.ConditionalExpression:
         console.log('conditional expression');
         var condExp = <ts.ConditionalExpression>node;
-        console.log(condExp);
+        // console.log(condExp);
         // condition
         // questionToken
         // whenTrue
@@ -549,7 +542,7 @@ export class Transpiler {
       case ts.SyntaxKind.ParenthesizedExpression:
         console.log('parenthesized expression!');
         var parenExp = <ts.ParenthesizedExpression>node;
-        console.log(parenExp);
+        //console.log(parenExp);
         this.emit('(');
         this.visit(parenExp.expression);
         this.emit(')');
@@ -594,6 +587,13 @@ export class Transpiler {
         console.log('first type node');
         this.emit(node.getText());
         break;
+      case ts.SyntaxKind.TypeQuery:  
+        console.log('type query');
+        var typeQ = <ts.TypeQueryNode>node;
+        //console.log(typeQ);
+        this.emit(' typeof ');
+        this.visit(typeQ.exprName);
+        break;
       // case ts.SyntaxKind.UnionType:
       //   break;
       // case ts.SyntaxKind.TypeReference:
@@ -612,9 +612,14 @@ export class Transpiler {
         break;
       // case ts.SyntaxKind.TypeParameter:
       //   break;
-      // case ts.SyntaxKind.ArrayType:
-      //   var at = <ts.ArrayTypeNode>node;
-      //   break;
+      case ts.SyntaxKind.ArrayType:
+        var at = <ts.ArrayTypeNode>node;
+        console.log('array type');
+        console.log(at);
+        console.log(at.elementType.kind);
+        this.visit(at.elementType);
+        this.emit('[]');
+        break;
       // case ts.SyntaxKind.FunctionType:
       //   break;
       // case ts.SyntaxKind.QualifiedName:
@@ -633,7 +638,10 @@ export class Transpiler {
         break;
       case ts.SyntaxKind.PublicKeyword:
         this.emit(' public ');
-      break;
+        break;
+      case ts.SyntaxKind.DeclareKeyword:
+        this.emit(' declare ');
+        break;
       case ts.SyntaxKind.ExportKeyword:
         this.emit('export ');
         break;
@@ -790,6 +798,43 @@ export class Transpiler {
       case ts.SyntaxKind.ThisKeyword:
         this.emit('this');
         break;
+
+      /* =================================== */
+      /*  MODULES
+      /* =================================== */
+      case ts.SyntaxKind.ImportDeclaration:
+        console.log('ImportDeclaration');
+        var importDecl = <ts.ImportDeclaration>node;
+        // does it make sense to go through its children?
+        // print the text at this node, for now.
+        this.emit(importDecl.getText());     
+        break;
+      case ts.SyntaxKind.ImportEqualsDeclaration:
+        console.log('ImportEqualsDeclaration');
+        var importEqDecl = <ts.ImportEqualsDeclaration>node;
+        // does it make sense to go through its children?
+        // print the text at this node, for now.
+        this.emit(importEqDecl.getText());
+        break;
+      case ts.SyntaxKind.ModuleDeclaration:
+        // console.log('module declaration!');
+        var modDecl = <ts.ModuleDeclaration>node;
+        //console.log(modDecl);
+        this.visitDecorators(modDecl.decorators);
+        if (modDecl.modifiers) this.visitEach(modDecl.modifiers);
+        this.emit('module ');
+        this.visit(modDecl.name);
+        this.emit('{ ');
+        this.visit(modDecl.body);
+        this.emit(' }');
+        break;
+      case ts.SyntaxKind.ModuleBlock:
+        // console.log('module block');
+        var modBlock = <ts.ModuleBlock>node;
+        // console.log(modBlock);
+        this.visitEach(modBlock.statements);
+        break;
+
       /* =================================== */
       /* ELSE
       /* =================================== */
@@ -900,8 +945,8 @@ export class Transpiler {
 
   visitFunctionLike(fn: ts.FunctionLikeDeclaration, accessor?: string) {
 
-    console.log('function like');
-    // console.log(fn);
+    //console.log('function like');
+    //console.log(fn);
 
     // decorators
     // asteriskToken
@@ -912,6 +957,8 @@ export class Transpiler {
     // body
 
     this.visitDecorators(fn.decorators);
+    if (fn.modifiers) this.visitEach(fn.modifiers);
+
     if (fn.asteriskToken) 
       this.visit(fn.asteriskToken);
 
@@ -932,7 +979,7 @@ export class Transpiler {
 
     if (fn.type) {
       this.emit(' : ');
-      console.log('fn.type.kind ' + (<any>ts).SyntaxKind[fn.type.kind]);
+      // console.log('fn.type.kind ' + (<any>ts).SyntaxKind[fn.type.kind]);
       this.visit(fn.type);
     }
     
@@ -951,8 +998,8 @@ export class Transpiler {
 
   /* This can probably also apply to ParameterDeclaration */
   visitProperty(pd: ts.PropertyDeclaration) {
-    console.log('propertydeclaration!');
-    console.log(pd);
+    // console.log('propertydeclaration!');
+    // console.log(pd);
 
     this.visitDecorators(pd.decorators);
 
