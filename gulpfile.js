@@ -22,8 +22,7 @@ gulp.task('test.check-format', function() {
 });
 
 gulp.task('clean', function(callback) {
-  var typeScriptGenFiles = [ './build/' ] // path to generated JS files
-      del(typeScriptGenFiles, callback);
+      del([ './build/' ], callback);
 });
 
 gulp.task('compile', function() {
@@ -42,8 +41,9 @@ gulp.task('test.compile', [ 'compile' ], function(done) {
 });
 
 gulp.task('unit.test', [ 'test.compile' ], function() {
+  var mochaOptions = {};
   return gulp.src('build/test/unit/main_test.js', {read : false})
-      .pipe(mocha({}));
+      .pipe(mocha(mochaOptions));
 });
 
 gulp.task('watch', function() {

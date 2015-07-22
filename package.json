@@ -2,10 +2,10 @@
   "name": "ts-minify",
   "version": "0.0.1",
   "description": "A tool to aid in the minification of Typescript code.",
-  "repository": "https://github.com/dariajung/mini-ts",
+  "repository": "https://github.com/angular/ts-minify",
   "license": "Apache-2.0",
   "scripts": {
-    "prepublish": "tsd query node --action install && tsd query mocha --action install && tsd query chai --action install"
+    "prepublish": "tsd install node && tsd install mocha && tsd install chai"
   },
   "dependencies": {
     "typescript": "alexeagle/TypeScript#error_is_class",
