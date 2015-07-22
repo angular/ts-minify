@@ -3,6 +3,5 @@
 
 import * as assert from 'assert';
 
-describe('Equality statement', function() {
-  it('shows that 1 equals 1', function() { assert.equal(1, 1); })
-});
+describe('Equality statement',
+         function() { it('shows that 1 equals 1', function() { assert.equal(1, 1); }) });
