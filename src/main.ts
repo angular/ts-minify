@@ -10,7 +10,7 @@ export const options: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES5,
 };
 
-export class Transpiler {
+export class Minifier {
   constructor() {}
 
   checkForErrors(program: ts.Program) {
@@ -27,16 +27,9 @@ export class Transpiler {
     });
 
     if (errors.length > 0) {
-      throw new Error('MALFORMED TYPESCRIPT\n' + errors.join('\n'));
+      throw new Error(
+          'Malformed TypeScript: Please check your source-files before attempting to use ts-minify.\n' +
+          errors.join('\n'));
     }
   }
-}
-
-if (DEBUG) {
-  var host = ts.createCompilerHost(options);
-  var program = ts.createProgram(['../../test/input/class_decl.ts'], options, host);
-  var typeChecker = program.getTypeChecker();
-  var sourceFile = program.getSourceFile('../../test/input/class_decl.ts');
-  var transpiler = new Transpiler();
-  transpiler.checkForErrors(program);
 }

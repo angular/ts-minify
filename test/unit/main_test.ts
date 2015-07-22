@@ -2,7 +2,7 @@
 /// <reference path="../../typings/chai/chai.d.ts"/>
 
 import * as assert from 'assert';
-import {Transpiler, options} from '../../src/main';
+import {Minifier, options} from '../../src/main';
 import * as chai from 'chai';
 import * as ts from 'typescript';
 
@@ -30,8 +30,8 @@ describe('Equality statement',
          function() { it('shows that 1 equals 1', function() { assert.equal(1, 1); }) });
 
 describe('Recognizes invalid TypeScript inputs', function() {
-  it('expects a "MALFORMED TYPESCRIPT" error when fed invalid TypeScript', function() {
-    var transpiler = new Transpiler();
+  it('expects a "Malformed TypeScript" error when fed invalid TypeScript', function() {
+    var transpiler = new Minifier();
     var program = parseFile('test.ts', 'function greet console.log("hello"); }');
     chai.expect(() => transpiler.checkForErrors(program)).to.throw(Error);
   });
