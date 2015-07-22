@@ -1,0 +1,24 @@
+{
+  "name": "ts-minify",
+  "version": "0.0.1",
+  "description": "A tool to aid in the minification of Typescript code.",
+  "repository": "https://github.com/dariajung/mini-ts",
+  "license": "Apache-2.0",
+  "scripts": {
+    "prepublish": "tsd query node --action install && tsd query mocha --action install && tsd query chai --action install"
+  },
+  "dependencies": {
+    "typescript": "alexeagle/TypeScript#error_is_class",
+    "gulp": ">=3.9.0"
+  },
+  "devDependencies": {
+    "clang-format": "^1.0.25",
+    "gulp-clang-format": "^1.0.21",
+    "gulp-mocha": "^2.1.1",
+    "chai": "*",
+    "mocha": "*",
+    "gulp-util": ">=3.0.6",
+    "gulp-typescript": "^2.8.0",
+    "del": ">=1.2.0"
+  }
+}
