@@ -8,7 +8,7 @@ var clangFormat = require('clang-format');
 var formatter = require('gulp-clang-format');
 
 var TSC_OPTIONS = {
-  module: "commonjs",
+  module: 'commonjs',
   noExternalResolve: false,
   declarationFiles: true,
   typescript: require('typescript'),
