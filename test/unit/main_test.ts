@@ -6,9 +6,6 @@ import * as ts from 'typescript';
 import * as chai from 'chai';
 import {Minifier, options} from '../../src/main';
 
-export type StringMap = { [k: string]: string };
-export type Input = string | StringMap;
-
 function expectTranslate(code: string) {
   var result = translateSource(code);
   return chai.expect(result);
