@@ -1,11 +1,11 @@
 language: node_js
 node_js: 
-	- "stable"
+  - "stable"
 before_script:
-	- npm install
+  - npm install
 script:
-	- npm test
+  - npm test
 cache:
-	directories:
-		- node_modules
-		- typings
+  directories:
+    - node_modules
+    - typings
