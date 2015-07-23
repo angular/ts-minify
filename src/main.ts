@@ -40,28 +40,8 @@ export class Minifier {
         });
 
         result += text.substring(prevEnd, text.length);
-
-        /* REMOVE BEFORE CHECKING IN */
-        if (DEBUG) {
-          console.log('-------------------------------------');
-          console.log(node.kind + ': ' + (<any>ts).SyntaxKind[node.kind]);
-          console.log('RESULT: ' + result);
-          console.log('TEXT: ' + text);
-          console.log('start: ' + node.getStart() + ' end: ' + node.getEnd());
-        }
         break;
     }
     return result;
   }
 }
-
-/* REMOVE BEFORE CHECKING IN */
-// if (DEBUG) {
-//   var host = ts.createCompilerHost(options);
-//   var program = ts.createProgram(['../../test/input/import_stmt.ts'], options, host);
-//   var sourceFile = program.getSourceFile('../../test/input/import_stmt.ts');
-//   var typeChecker = program.getTypeChecker();
-//   var minifier = new Minifier();
-//   console.log('========================');
-//   console.log(minifier.visit(sourceFile));
-// }
