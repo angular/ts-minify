@@ -1,5 +1,5 @@
-/// <reference path="../../typings/mocha/mocha.d.ts"/>
-/// <reference path="../../typings/chai/chai.d.ts"/>
+/// <reference path='../../typings/mocha/mocha.d.ts'/>
+/// <reference path='../../typings/chai/chai.d.ts'/>
 
 import * as assert from 'assert';
 import {Minifier, options} from '../../src/main';
@@ -26,13 +26,18 @@ function parseFile(fileName: string, fileContent: string): ts.Program {
   return program;
 }
 
-describe('Equality statement',
-         function() { it('shows that 1 equals 1', function() { assert.equal(1, 1); }) });
+describe('Equality statement', () => {it('shows that 1 equals 1', () => { assert.equal(1, 1); })});
 
-describe('Recognizes invalid TypeScript inputs', function() {
-  it('expects a "Malformed TypeScript" error when fed invalid TypeScript', function() {
-    var transpiler = new Minifier();
+describe('Recognizes invalid TypeScript inputs', () => {
+  it('expects a "Malformed TypeScript" error when fed invalid TypeScript', () => {
+    var minifier = new Minifier();
     var program = parseFile('test.ts', 'function greet console.log("hello"); }');
-    chai.expect(() => transpiler.checkForErrors(program)).to.throw(Error);
+    chai.expect(() => minifier.checkForErrors(program)).to.throw(/Malformed TypeScript/);
   });
+  it('does not throw an error when fed valid TypeScript', () => {
+    var minifer = new Minifier;
+    var program = parseFile('test.ts', 'function greet() { console.log("hello"); }');
+    chai.expect(() => assert.doesNotThrow(minifer.checkForErrors(program), Error,
+                /Malformed TypeScript/);
+  })
 });
