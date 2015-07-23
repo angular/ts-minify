@@ -31,13 +31,12 @@ describe('Equality statement', () => {it('shows that 1 equals 1', () => { assert
 describe('Recognizes invalid TypeScript inputs', () => {
   it('expects a "Malformed TypeScript" error when fed invalid TypeScript', () => {
     var minifier = new Minifier();
-    var program = parseFile('test.ts', 'function greet console.log("hello"); }');
+    var program = parseFile('test.ts', 'function x console.log("hello"); }');
     chai.expect(() => minifier.checkForErrors(program)).to.throw(/Malformed TypeScript/);
   });
   it('does not throw an error when fed valid TypeScript', () => {
     var minifer = new Minifier;
-    var program = parseFile('test.ts', 'function greet() { console.log("hello"); }');
-    chai.expect(() => assert.doesNotThrow(minifer.checkForErrors(program), Error,
-                /Malformed TypeScript/);
+    var program = parseFile('test.ts', '(function blah() {})');
+    chai.expect(() => minifer.checkForErrors(program)).to.not.throw();
   })
 });
