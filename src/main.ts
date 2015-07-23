@@ -2,20 +2,17 @@
 
 import * as ts from 'typescript';
 
-const DEBUG = false;
+const DEBUG = true;
 
 export const options: ts.CompilerOptions = {
-  allowNonTsExten sions: true,
+  allowNonTsExtensions: true,
   module: ts.ModuleKind.CommonJS,
   target: ts.ScriptTarget.ES5,
 };
 
-class Transpiler {
+export class Minifier {
   constructor() {}
 
-	/* ================================================ */
-  /* 	SHOULD BE ITS OWN PR WITH TESTS
-  /* ================================================ */
   visit(node: ts.Node) {
     switch (node.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
@@ -23,8 +20,8 @@ class Transpiler {
         var pae = <ts.PropertyAccessExpression>node;
         result += this.visit(pae.expression);
         result += '.';
-        result += pae.name.text + '!!!!!!';
-
+        // Adds '$mangled' to an identifier to ensure that the identifier is being altered.
+        result += pae.name.text + '$mangled';
         break;
 
       default:
@@ -44,6 +41,7 @@ class Transpiler {
 
         result += text.substring(prevEnd, text.length);
 
+        /* REMOVE BEFORE CHECKING IN */
         if (DEBUG) {
           console.log('-------------------------------------');
           console.log(node.kind + ': ' + (<any>ts).SyntaxKind[node.kind]);
@@ -57,11 +55,13 @@ class Transpiler {
   }
 }
 
-if (DEBUG) {
-  var host = ts.createCompilerHost(options);
-  var program = ts.createProgram(['../../test/input/class_decl.ts'], options, host);
-  var typeChecker = program.getTypeChecker();
-  var sourceFile = program.getSourceFile('../../test/input/class_decl.ts');
-  var transpiler = new Transpiler();
-  transpiler.checkForErrors(program);
-}
+/* REMOVE BEFORE CHECKING IN */
+// if (DEBUG) {
+//   var host = ts.createCompilerHost(options);
+//   var program = ts.createProgram(['../../test/input/import_stmt.ts'], options, host);
+//   var sourceFile = program.getSourceFile('../../test/input/import_stmt.ts');
+//   var typeChecker = program.getTypeChecker();
+//   var minifier = new Minifier();
+//   console.log('========================');
+//   console.log(minifier.visit(sourceFile));
+// }
