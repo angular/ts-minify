@@ -77,4 +77,33 @@ export class Minifier {
       }
     }
   }
+
+  private nextChar(c: string): string { return String.fromCharCode(c.charCodeAt(0) + 1); }
+
+  // Given the last code, returns a string for the new property name.
+  // ie: given 'a', will return 'b', given 'az', will return 'ba', etc. ...
+  generateNextLateralPropertyName(code: string): string {
+    var chars = code.split('');
+    var len: number = code.length;
+
+    if (len === 0) {
+      return 'a';
+    }
+
+    var last: string = chars[len - 1];
+
+    /* Grab the next letter using nextChar */
+    for (var i = len - 1; i >= 0; i--) {
+      if (chars[i] !== 'z') {
+        chars[i] = this.nextChar(chars[i]);
+        break;
+      } else {
+        chars[i] = 'a';
+        if (i === 0) {
+          return 'a' + (chars.join(''));
+        }
+      }
+    }
+    return chars.join('');
+  }
 }

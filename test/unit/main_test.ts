@@ -73,3 +73,12 @@ describe('Visitor pattern', () => {
     expectTranslate('var x = foo.baz();').to.equal('var x = foo.baz$mangled();');
   });
 });
+
+describe('Next lateral name generation', () => {
+  it('correctly generates a new shortname/alias', () => {
+    var minifier = new Minifier();
+    assert.equal(minifier.generateNextLateralPropertyName('a'), 'b');
+    assert.equal(minifier.generateNextLateralPropertyName('ab'), 'ac');
+    assert.equal(minifier.generateNextLateralPropertyName('zz'), 'aaa');
+  });
+});
