@@ -1,4 +1,4 @@
-/// <reference path='../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path = '../node_modules/typescript/bin/typescript.d.ts' />
 
 import * as ts from 'typescript';
 
@@ -75,6 +75,116 @@ export class Minifier {
         output += nodeText.substring(prevEnd, nodeText.length);
         return output;
       }
+    }
+  }
+
+  // Alphabet ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z']
+  nextChar(str: string): string {
+    switch (str) {
+      case '$':
+        return '_';
+      case '_':
+        return '0';
+      case '9':
+        return 'a';
+      case 'z':
+        return 'A';
+      case 'Z':
+        return '$';
+      default:
+        return String.fromCharCode(str.charCodeAt(0) + 1);
+    }
+  }
+
+  private checkReserved(str: string): boolean {
+    // From MDN's Lexical Grammar page
+    // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
+    var reserved = [
+      'break',
+      'case',
+      'class',
+      'catch',
+      'const',
+      'continue',
+      'debugger',
+      'delete',
+      'do',
+      'else',
+      'export',
+      'extends',
+      'finally',
+      'for',
+      'function',
+      'if',
+      'import',
+      'in',
+      'instanceof',
+      'let',
+      'new',
+      'return',
+      'super',
+      'switch',
+      'this',
+      'throw',
+      'try',
+      'typeof',
+      'var',
+      'void',
+      'while',
+      'with',
+      'yield',
+      'enum',
+      'await',
+      'int',
+      'byte',
+      'char',
+      'goto',
+      'long',
+      'final',
+      'float',
+      'short',
+      'double',
+      'native',
+      'throws',
+      'boolean',
+      'abstract',
+      'volatile',
+      'transient',
+      'synchronized'
+    ];
+
+    return (reserved.indexOf(str) > -1);
+  }
+
+  // Given the last code, returns a string for the new property name.
+  // ie: given 'a', will return 'b', given 'az', will return 'aA', etc. ...
+  generateNextPropertyName(code: string): string {
+    var chars = code.split('');
+    var len: number = code.length;
+    var firstChar = '$';
+    var lastChar = 'Z';
+
+    if (len === 0) {
+      return firstChar;
+    }
+
+    /* Grab the next letter using nextChar */
+    for (var i = len - 1; i >= 0; i--) {
+      if (chars[i] !== lastChar) {
+        chars[i] = this.nextChar(chars[i]);
+        break;
+      } else {
+        chars[i] = firstChar;
+        if (i === 0) {
+          return firstChar + (chars.join(''));
+        }
+      }
+    }
+    var newName = chars.join('');
+    if (this.checkReserved(newName)) {
+      return this.generateNextPropertyName(newName);
+    } else {
+      return newName;
     }
   }
 }
