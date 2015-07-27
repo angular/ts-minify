@@ -144,9 +144,7 @@ export class Minifier {
       'synchronized'
     ];
 
-    function inArray(elem, arr) {
-      return (arr.indexOf(elem) > -1);
-    }
+    function inArray(elem, arr) { return (arr.indexOf(elem) > -1); }
 
     return (inArray(str, reserved) ? true : false);
   }
