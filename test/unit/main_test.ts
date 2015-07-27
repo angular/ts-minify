@@ -74,11 +74,18 @@ describe('Visitor pattern', () => {
   });
 });
 
-describe('Next lateral name generation', () => {
+describe('Next property name generation', () => {
   it('correctly generates a new shortname/alias', () => {
     var minifier = new Minifier();
-    assert.equal(minifier.generateNextLateralPropertyName('a'), 'b');
-    assert.equal(minifier.generateNextLateralPropertyName('ab'), 'ac');
-    assert.equal(minifier.generateNextLateralPropertyName('zz'), 'aaa');
+    assert.equal(minifier.generateNextPropertyName('a'), 'b');
+    assert.equal(minifier.generateNextPropertyName('ab'), 'ac');
+    assert.equal(minifier.generateNextPropertyName(''), '$');
+    assert.equal(minifier.generateNextPropertyName('$'), '_');
+    assert.equal(minifier.generateNextPropertyName('_'), 'a');
+    assert.equal(minifier.generateNextPropertyName('$a'), '$b');
+    assert.equal(minifier.generateNextPropertyName('$_'), '$a');
+    assert.equal(minifier.generateNextPropertyName('z'), '$$');
+    assert.equal(minifier.generateNextPropertyName('A'), 'B');
+    assert.equal(minifier.generateNextPropertyName('im'), 'io');
   });
 });
