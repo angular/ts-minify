@@ -5,7 +5,8 @@
   "repository": "https://github.com/angular/ts-minify",
   "license": "Apache-2.0",
   "scripts": {
-    "test": "gulp unit.test"
+    "prepublish": "npm install tsd@^0.6.3 && tsd install node && tsd install mocha && tsd install chai",
+    "test": "gulp unit.test",
   },
   "dependencies": {
     "typescript": "alexeagle/TypeScript#error_is_class",

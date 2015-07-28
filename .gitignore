@@ -27,5 +27,6 @@ build/Release
 node_modules
 
 # Typescript Specific
+typings/
 
 build/
