@@ -11,6 +11,8 @@ export const options: ts.CompilerOptions = {
 };
 
 export class Minifier {
+  private reservedJSKeywords;
+
   constructor() {}
 
   checkForErrors(program: ts.Program) {
@@ -80,7 +82,7 @@ export class Minifier {
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
-  // and ending in 'Z'. If nextChar is passed in 'Z', it will 
+  // and ending in 'Z'. If nextChar is passed in 'Z', it will
   // start over from the beginning of the alphabet and return '$'.
   private nextChar(str: string): string {
     switch (str) {
@@ -102,61 +104,21 @@ export class Minifier {
   private checkReserved(str: string): boolean {
     // From MDN's Lexical Grammar page
     // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
-    var reserved = {
-      'break' : true,
-      'case': true,
-      'class': true,
-      'catch': true,
-      'const': true,
-      'continue': true,
-      'debugger': true,
-      'delete': true,
-      'do': true,
-      'else': true,
-      'export': true,
-      'extends': true,
-      'finally': true,
-      'for': true,
-      'function': true,
-      'if': true,
-      'import': true,
-      'in': true,
-      'instanceof': true,
-      'let': true,
-      'new': true,
-      'return': true,
-      'super': true,
-      'switch': true,
-      'this': true,
-      'throw': true,
-      'try': true,
-      'typeof': true,
-      'var': true,
-      'void': true,
-      'while': true,
-      'with': true,
-      'yield': true,
-      'enum': true,
-      'await': true,
-      'int': true,
-      'byte': true,
-      'char': true,
-      'goto': true,
-      'long': true,
-      'final': true,
-      'float': true,
-      'short': true,
-      'double': true,
-      'native': true,
-      'throws': true,
-      'boolean': true,
-      'abstract': true,
-      'volatile': true,
-      'transient': true,
-      'synchronized': true
-    };
+    var keywordList =
+        ('break case class catch const continue debugger delete do else export extends finally for' +
+         ' function if import in instanceof let new return super switch this throw try typeof var' +
+         ' void while with yield enum await int byte char goto long final float short double' +
+         ' native throws boolean abstract volatile transient synchronized')
+            .split(' ');
 
-    return (reserved[str] ? true : false);
+    if (!this.reservedJSKeywords) {
+      this.reservedJSKeywords = {};
+      for (var i in keywordList) {
+        this.reservedJSKeywords[keywordList[i]] = true;
+      }
+    }
+
+    return this.reservedJSKeywords.hasOwnProperty(str);
   }
 
   // Given the last code, returns a string for the new property name.
