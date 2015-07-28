@@ -1,4 +1,4 @@
-/// <reference path='../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path = '../node_modules/typescript/bin/typescript.d.ts' />
 
 import * as ts from 'typescript';
 
@@ -78,18 +78,27 @@ export class Minifier {
     }
   }
 
-  private nextChar(str: string): string {
-    if (str === '$') {
-      return '_';
+  // Alphabet ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z']
+  nextChar(str: string): string {
+    switch (str) {
+      case '$':
+        return '_';
+      case '_':
+        return '0';
+      case '9':
+        return 'a';
+      case 'z':
+        return 'A';
+      case 'Z':
+        return '$';
+      default:
+        return String.fromCharCode(str.charCodeAt(0) + 1);
     }
-
-    if (str === '_') {
-      return 'a';
-    }
-    return String.fromCharCode(str.charCodeAt(0) + 1);
   }
 
   private checkReserved(str: string): boolean {
+    // From MDN's Lexical Grammar page
+    // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
     var reserved = [
       'break',
       'case',
@@ -144,18 +153,16 @@ export class Minifier {
       'synchronized'
     ];
 
-    function inArray(elem, arr) { return (arr.indexOf(elem) > -1); }
-
-    return (inArray(str, reserved) ? true : false);
+    return (reserved.indexOf(str) > -1);
   }
 
   // Given the last code, returns a string for the new property name.
-  // ie: given 'a', will return 'b', given 'az', will return 'ba', etc. ...
+  // ie: given 'a', will return 'b', given 'az', will return 'aA', etc. ...
   generateNextPropertyName(code: string): string {
     var chars = code.split('');
     var len: number = code.length;
     var firstChar = '$';
-    var lastChar = 'z';
+    var lastChar = 'Z';
 
     if (len === 0) {
       return firstChar;
