@@ -11,6 +11,8 @@ export const options: ts.CompilerOptions = {
 };
 
 export class Minifier {
+  static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
+
   constructor() {}
 
   checkForErrors(program: ts.Program) {
@@ -78,8 +80,11 @@ export class Minifier {
     }
   }
 
-  // Alphabet ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z']
-  nextChar(str: string): string {
+  // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
+  // Generates the next char in the alphabet, starting from '$',
+  // and ending in 'Z'. If nextChar is passed in 'Z', it will
+  // start over from the beginning of the alphabet and return '$'.
+  private nextChar(str: string): string {
     switch (str) {
       case '$':
         return '_';
@@ -96,64 +101,24 @@ export class Minifier {
     }
   }
 
-  private checkReserved(str: string): boolean {
+  static buildReservedKeywordsMap(): {[name: string]: boolean} {
+    var map: {[name: string]: boolean} = {};
     // From MDN's Lexical Grammar page
     // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
-    var reserved = [
-      'break',
-      'case',
-      'class',
-      'catch',
-      'const',
-      'continue',
-      'debugger',
-      'delete',
-      'do',
-      'else',
-      'export',
-      'extends',
-      'finally',
-      'for',
-      'function',
-      'if',
-      'import',
-      'in',
-      'instanceof',
-      'let',
-      'new',
-      'return',
-      'super',
-      'switch',
-      'this',
-      'throw',
-      'try',
-      'typeof',
-      'var',
-      'void',
-      'while',
-      'with',
-      'yield',
-      'enum',
-      'await',
-      'int',
-      'byte',
-      'char',
-      'goto',
-      'long',
-      'final',
-      'float',
-      'short',
-      'double',
-      'native',
-      'throws',
-      'boolean',
-      'abstract',
-      'volatile',
-      'transient',
-      'synchronized'
-    ];
+    var keywordList =
+        ('break case class catch const continue debugger delete do else export extends finally for' +
+         ' function if import in instanceof let new return super switch this throw try typeof var' +
+         ' void while with yield enum await int byte char goto long final float short double' +
+         ' native throws boolean abstract volatile transient synchronized')
+            .split(' ');
+    for (var i in keywordList) {
+      map[keywordList[i]] = true;
+    }
+    return map;
+  }
 
-    return (reserved.indexOf(str) > -1);
+  private checkReserved(str: string): boolean {
+    return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
   // Given the last code, returns a string for the new property name.
