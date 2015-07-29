@@ -102,17 +102,16 @@ export class Minifier {
   }
 
   private checkReserved(str: string): boolean {
-    // From MDN's Lexical Grammar page
-    // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
-    var keywordList =
-        ('break case class catch const continue debugger delete do else export extends finally for' +
-         ' function if import in instanceof let new return super switch this throw try typeof var' +
-         ' void while with yield enum await int byte char goto long final float short double' +
-         ' native throws boolean abstract volatile transient synchronized')
-            .split(' ');
-
     if (!this.reservedJSKeywords) {
       this.reservedJSKeywords = {};
+      // From MDN's Lexical Grammar page
+      // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
+      var keywordList =
+          ('break case class catch const continue debugger delete do else export extends finally for' +
+           ' function if import in instanceof let new return super switch this throw try typeof var' +
+           ' void while with yield enum await int byte char goto long final float short double' +
+           ' native throws boolean abstract volatile transient synchronized')
+              .split(' ');
       for (var i in keywordList) {
         this.reservedJSKeywords[keywordList[i]] = true;
       }
