@@ -11,9 +11,9 @@ export const options: ts.CompilerOptions = {
 };
 
 export class Minifier {
-  private reservedJSKeywords;
+  static reservedJSKeywords = {};
 
-  constructor() {}
+  constructor() { Minifier.reservedJSKeywords = Minifier.initReserved(); }
 
   checkForErrors(program: ts.Program) {
     var errors = [];
@@ -101,23 +101,24 @@ export class Minifier {
     }
   }
 
-  private checkReserved(str: string): boolean {
-    if (!this.reservedJSKeywords) {
-      this.reservedJSKeywords = {};
-      // From MDN's Lexical Grammar page
-      // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
-      var keywordList =
-          ('break case class catch const continue debugger delete do else export extends finally for' +
-           ' function if import in instanceof let new return super switch this throw try typeof var' +
-           ' void while with yield enum await int byte char goto long final float short double' +
-           ' native throws boolean abstract volatile transient synchronized')
-              .split(' ');
-      for (var i in keywordList) {
-        this.reservedJSKeywords[keywordList[i]] = true;
-      }
+  static initReserved() {
+    var map = {};
+    // From MDN's Lexical Grammar page
+    // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
+    var keywordList =
+        ('break case class catch const continue debugger delete do else export extends finally for' +
+         ' function if import in instanceof let new return super switch this throw try typeof var' +
+         ' void while with yield enum await int byte char goto long final float short double' +
+         ' native throws boolean abstract volatile transient synchronized')
+            .split(' ');
+    for (var i in keywordList) {
+      map[keywordList[i]] = true;
     }
+    return map;
+  }
 
-    return this.reservedJSKeywords.hasOwnProperty(str);
+  private checkReserved(str: string): boolean {
+    return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
   // Given the last code, returns a string for the new property name.
