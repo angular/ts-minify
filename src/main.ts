@@ -11,9 +11,9 @@ export const options: ts.CompilerOptions = {
 };
 
 export class Minifier {
-  static reservedJSKeywords = {};
+  static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
 
-  constructor() { Minifier.reservedJSKeywords = Minifier.initReserved(); }
+  constructor() {}
 
   checkForErrors(program: ts.Program) {
     var errors = [];
@@ -101,8 +101,8 @@ export class Minifier {
     }
   }
 
-  static initReserved() {
-    var map = {};
+  static buildReservedKeywordsMap(): {[name: string]: boolean} {
+    var map: {[name: string]: boolean} = {};
     // From MDN's Lexical Grammar page
     // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar)
     var keywordList =
