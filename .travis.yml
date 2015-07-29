@@ -9,3 +9,8 @@ cache:
   directories:
     - node_modules
     - typings
+env:
+  global:
+  # https://github.com/DefinitelyTyped/tsd#tsdrc
+  # Token has no scope (read-only access to public information)
+  - TSD_GITHUB_TOKEN=15cc257af05b77cc99ce080a1ddfcceb6e012ce2
