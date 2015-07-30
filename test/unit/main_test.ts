@@ -81,7 +81,8 @@ describe('Next property name generation', () => {
     assert.equal(minifier.generateNextPropertyName('ab'), 'ac');
     assert.equal(minifier.generateNextPropertyName(''), '$');
     assert.equal(minifier.generateNextPropertyName('$'), '_');
-    assert.equal(minifier.generateNextPropertyName('_'), '0');
+    assert.equal(minifier.generateNextPropertyName('_'), 'a');
+    assert.equal(minifier.generateNextPropertyName('1'), 'a');
     assert.equal(minifier.generateNextPropertyName('$a'), '$b');
     assert.equal(minifier.generateNextPropertyName('$_'), '$0');
     assert.equal(minifier.generateNextPropertyName('z'), 'A');

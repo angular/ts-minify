@@ -121,6 +121,8 @@ export class Minifier {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
+  private checkStartsWithNumber(str: string): boolean { return (!isNaN(parseInt(str.charAt(0)))); }
+
   // Given the last code, returns a string for the new property name.
   // ie: given 'a', will return 'b', given 'az', will return 'aA', etc. ...
   generateNextPropertyName(code: string): string {
@@ -146,7 +148,7 @@ export class Minifier {
       }
     }
     var newName = chars.join('');
-    if (this.checkReserved(newName)) {
+    if (this.checkReserved(newName) || this.checkStartsWithNumber(newName)) {
       return this.generateNextPropertyName(newName);
     } else {
       return newName;
