@@ -13,7 +13,7 @@ export const options: ts.CompilerOptions = {
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
-  private renameMap: { [name: string]: string } = {};
+  private renameMap: {[name: string]: string} = {};
   private lastGeneratedPropName: string = '';
 
   constructor() {}
@@ -43,14 +43,15 @@ export class Minifier {
   visit(node: ts.Node) {
     switch (node.kind) {
       case ts.SyntaxKind.Identifier: {
-        let output = '';
-        let newName = this.renameProperty(node.getText());
-        output += newName;
-        //console.log(node);
-        console.log('IDENTIFIER: ' + node.getText());
-        console.log('SOURCEFILE ');
-        console.log(node.getSourceFile());
-        return output;
+        let parentKind = node.parent.kind;
+        console.log(parentKind + ' ' + node.getText());
+        if (parentKind === ts.SyntaxKind.PropertyDeclaration ||
+            parentKind === ts.SyntaxKind.PropertyAccessExpression) {
+          let newName = this.renameProperty(node.getText());
+          return newName;
+        } else {
+          return node.getText();
+        }
       }
       default: {
         // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
@@ -125,9 +126,7 @@ export class Minifier {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
-  private checkStartsWithNumber(str: string): boolean {
-    return (!isNaN(parseInt(str.charAt(0))));
-  }
+  private checkStartsWithNumber(str: string): boolean { return (!isNaN(parseInt(str.charAt(0)))); }
 
   renameProperty(name: string): string {
     if (!this.renameMap.hasOwnProperty(name)) {
@@ -172,11 +171,11 @@ export class Minifier {
   }
 }
 
-if (DEBUG) {
-  var host = ts.createCompilerHost(options);
-  var program = ts.createProgram(['../../test/input/animal.ts'], options, host);
-  var typeChecker = program.getTypeChecker();
-  var sourceFile = program.getSourceFile('../../test/input/animal.ts');
-  var minifier = new Minifier();
-  console.log(minifier.visit(sourceFile));
-}
+// if (DEBUG) {
+//   var host = ts.createCompilerHost(options);
+//   var program = ts.createProgram(['../../test/input/animal.ts'], options, host);
+//   var typeChecker = program.getTypeChecker();
+//   var sourceFile = program.getSourceFile('../../test/input/animal.ts');
+//   var minifier = new Minifier();
+//   console.log(minifier.visit(sourceFile));
+// }

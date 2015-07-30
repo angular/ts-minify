@@ -64,13 +64,13 @@ describe('Recognizes invalid TypeScript inputs', () => {
 });
 
 describe('Visitor pattern', () => {
-  it('shows correctly appends "$mangled" to an identifier of a property access expression', () => {
-    expectTranslate('Math.random();').to.equal('Math.random$mangled();');
-    expectTranslate('Class Foo { a: string; constructor() {} b() { this.a = "hello"; } }')
-        .to.equal('Class Foo { a: string; constructor() {} b() { this.a$mangled = "hello"; } }');
-    expectTranslate('for (x in foo.bar) { var y = foo.bar.baz; }')
-        .to.equal('for (x in foo.bar$mangled) { var y = foo.bar$mangled.baz$mangled; }');
-    expectTranslate('var x = foo.baz();').to.equal('var x = foo.baz$mangled();');
+  it('renames identifiers of property declarations and property access expressions', () => {
+    expectTranslate('Math.random();').to.equal('$._();');
+    expectTranslate('class Foo { bar: string; constructor() {} baz() { this.bar = "hello"; } }')
+        .to.equal('class Foo { $: string; constructor() {} baz() { this.$ = "hello"; } }');
+    expectTranslate('for (var x in foo.bar) { var y = foo.bar.baz; }')
+      .to.equal('for (var x in $._) { var y = $._.a; }');
+    expectTranslate('class Foo {bar: string;} class Baz {bar: string;}').to.equal('');
   });
 });
 
