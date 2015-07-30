@@ -122,7 +122,7 @@ export class Minifier {
   }
 
   private isNumeric(char: string): boolean { 
-    return (!isNaN(parseInt(char))); 
+    return (!isNaN(parseInt(char)) && isFinite(parseInt(char))); 
   }
 
   // Given the last code, returns a string for the new property name.
@@ -137,7 +137,7 @@ export class Minifier {
     if (len === 0) {
       return firstChar;
     }
-    
+
     /* Grab the next letter using nextChar */
     for (var i = len - 1; i >= 0; i--) {
       if (chars[i] !== lastChar) {
@@ -153,6 +153,7 @@ export class Minifier {
     var newName = chars.join('');
     if (this.checkReserved(newName)) {
       return this.generateNextPropertyName(newName);
+    // property names cannot start with a number
     } else if (this.isNumeric(chars[0])) {
       return (firstAlpha + Array(len).join(firstChar));
     } else {
