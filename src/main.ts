@@ -1,8 +1,9 @@
 /// <reference path = '../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path = '../node_modules/typescript/bin/lib.es6.d.ts' />
 
 import * as ts from 'typescript';
 
-const DEBUG = false;
+const DEBUG = true;
 
 export const options: ts.CompilerOptions = {
   allowNonTsExtensions: true,
@@ -12,6 +13,8 @@ export const options: ts.CompilerOptions = {
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
+  private renameMap: { [name: string]: string } = {};
+  private lastGeneratedPropName: string = '';
 
   constructor() {}
 
@@ -39,13 +42,14 @@ export class Minifier {
   // a child node.
   visit(node: ts.Node) {
     switch (node.kind) {
-      case ts.SyntaxKind.PropertyAccessExpression: {
+      case ts.SyntaxKind.Identifier: {
         let output = '';
-        let propAccessExp = <ts.PropertyAccessExpression>node;
-        output += this.visit(propAccessExp.expression);
-        output += '.';
-        // Adds '$mangled' to an identifier to ensure that the identifier is being altered.
-        output += propAccessExp.name.text + '$mangled';
+        let newName = this.renameProperty(node.getText());
+        output += newName;
+        //console.log(node);
+        console.log('IDENTIFIER: ' + node.getText());
+        console.log('SOURCEFILE ');
+        console.log(node.getSourceFile());
         return output;
       }
       default: {
@@ -121,6 +125,19 @@ export class Minifier {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
+  private checkStartsWithNumber(str: string): boolean {
+    return (!isNaN(parseInt(str.charAt(0))));
+  }
+
+  renameProperty(name: string): string {
+    if (!this.renameMap.hasOwnProperty(name)) {
+      let newName = this.generateNextPropertyName(this.lastGeneratedPropName);
+      this.renameMap[name] = newName;
+      this.lastGeneratedPropName = newName;
+    }
+    return this.renameMap[name];
+  }
+
   // Given the last code, returns a string for the new property name.
   // ie: given 'a', will return 'b', given 'az', will return 'aA', etc. ...
   generateNextPropertyName(code: string): string {
@@ -146,10 +163,20 @@ export class Minifier {
       }
     }
     var newName = chars.join('');
-    if (this.checkReserved(newName)) {
+    // a variable name cannot be a reserved keyword or start with a number
+    if (this.checkReserved(newName) || this.checkStartsWithNumber(newName)) {
       return this.generateNextPropertyName(newName);
     } else {
       return newName;
     }
   }
+}
+
+if (DEBUG) {
+  var host = ts.createCompilerHost(options);
+  var program = ts.createProgram(['../../test/input/animal.ts'], options, host);
+  var typeChecker = program.getTypeChecker();
+  var sourceFile = program.getSourceFile('../../test/input/animal.ts');
+  var minifier = new Minifier();
+  console.log(minifier.visit(sourceFile));
 }
