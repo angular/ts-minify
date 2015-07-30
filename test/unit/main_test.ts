@@ -81,7 +81,8 @@ describe('Next property name generation', () => {
     assert.equal(minifier.generateNextPropertyName('ab'), 'ac');
     assert.equal(minifier.generateNextPropertyName(''), '$');
     assert.equal(minifier.generateNextPropertyName('$'), '_');
-    assert.equal(minifier.generateNextPropertyName('_'), '0');
+    assert.equal(minifier.generateNextPropertyName('_'), 'a');
+    assert.equal(minifier.generateNextPropertyName('1'), 'a');
     assert.equal(minifier.generateNextPropertyName('$a'), '$b');
     assert.equal(minifier.generateNextPropertyName('$_'), '$0');
     assert.equal(minifier.generateNextPropertyName('z'), 'A');
@@ -89,6 +90,9 @@ describe('Next property name generation', () => {
     assert.equal(minifier.generateNextPropertyName('9'), 'a');
     assert.equal(minifier.generateNextPropertyName('Z'), '$$');
     assert.equal(minifier.generateNextPropertyName('az'), 'aA');
+    assert.equal(minifier.generateNextPropertyName('0a'), 'a$');
+    assert.equal(minifier.generateNextPropertyName('0a00'), 'a$$$');
+    assert.equal(minifier.generateNextPropertyName('a$'), 'a_');
   });
   it('correctly skips over reserved keywords', () => {
     var minifier = new Minifier();

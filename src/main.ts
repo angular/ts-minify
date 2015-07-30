@@ -128,6 +128,7 @@ export class Minifier {
     var len: number = code.length;
     var firstChar = '$';
     var lastChar = 'Z';
+    var firstAlpha = 'a';
 
     if (len === 0) {
       return firstChar;
@@ -148,6 +149,10 @@ export class Minifier {
     var newName = chars.join('');
     if (this.checkReserved(newName)) {
       return this.generateNextPropertyName(newName);
+      // Property names cannot start with a number. Generate next possible property name that starts
+      // with the first alpha character.
+    } else if (chars[0].match(/[0-9]/)) {
+      return (firstAlpha + Array(len).join(firstChar));
     } else {
       return newName;
     }
