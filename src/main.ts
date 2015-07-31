@@ -121,8 +121,8 @@ export class Minifier {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
-  private isNumeric(char: string): boolean { 
-    return (!isNaN(parseInt(char)) && isFinite(parseInt(char))); 
+  private isNumeric(char: string): boolean {
+    return (!isNaN(parseInt(char)) && isFinite(parseInt(char)));
   }
 
   // Given the last code, returns a string for the new property name.
@@ -153,7 +153,8 @@ export class Minifier {
     var newName = chars.join('');
     if (this.checkReserved(newName)) {
       return this.generateNextPropertyName(newName);
-    // property names cannot start with a number
+      // Property names cannot start with a number. Generate next possible property name that starts
+      // with the first alpha character.
     } else if (this.isNumeric(chars[0])) {
       return (firstAlpha + Array(len).join(firstChar));
     } else {
