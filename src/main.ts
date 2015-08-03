@@ -40,17 +40,68 @@ export class Minifier {
 
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
   // a child node.
-  visit(node: ts.Node) {
+  visit(node: ts.Node, typeChecker?: ts.TypeChecker) {
     switch (node.kind) {
-      case ts.SyntaxKind.Identifier: {
-        let parentKind = node.parent.kind;
-        console.log(parentKind + ' ' + node.getText());
-        if (parentKind === ts.SyntaxKind.PropertyDeclaration ||
-            parentKind === ts.SyntaxKind.PropertyAccessExpression) {
-          let newName = this.renameProperty(node.getText());
-          return newName;
+      // case ts.SyntaxKind.Identifier: {
+      //   let parentKind = node.parent.kind;
+      //   if (parentKind === ts.SyntaxKind.PropertyDeclaration ||
+      //       parentKind === ts.SyntaxKind.PropertyAccessExpression) {
+      //     let newName = this.renameProperty(node.getText());
+      //     return newName;
+      //   } else {
+      //     return node.getText();
+      //   }
+      // }
+      case ts.SyntaxKind.PropertyDeclaration: {
+        let propDecl = <ts.PropertyDeclaration>node;
+        let nodeText = propDecl.getText();
+        let output = '';
+        let childText = '';
+        let nameStart = propDecl.name.getStart() - propDecl.getStart();
+        let nameEnd = propDecl.name.getEnd() - propDecl.getStart(); 
+
+        output += nodeText.substring(0, nameStart);
+        output += this.renameIdent(propDecl.name);
+        output += nodeText.substring(nameEnd, nodeText.length);
+
+        return output;
+
+      }
+      case ts.SyntaxKind.PropertyAccessExpression: {
+        let pae = <ts.PropertyAccessExpression>node;
+        let nodeText = pae.getText();
+        let output = '';
+        let childText = '';
+        let exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
+
+        if (exprSymbol) {
+          // start off by assuming renameable
+          let rename: boolean = true;
+          var re = /\.d\.ts/;
+
+          // check if source filename of a declaration ends in .d.ts
+          exprSymbol.declarations.forEach((decl) => {
+            let fileName = decl.getSourceFile().fileName;
+            if (fileName.match(re)) rename = false;
+          });
+
+          let nameStart = pae.name.getStart() - pae.getStart();
+          let nameEnd = pae.name.getEnd() - pae.getStart();
+
+          output += nodeText.substring(0, nameStart);
+
+          if (rename) {
+            childText = this.renameIdent(pae.name);
+          } else {
+            childText = this.ident(pae.name);
+          }
+
+          output += childText;
+          output += nodeText.substring(nameEnd, nodeText.length);
+
+          return output;
         } else {
-          return node.getText();
+          return pae.getText();
         }
       }
       default: {
@@ -75,7 +126,7 @@ export class Minifier {
           let childStart = child.getStart() - node.getStart();
           let childEnd = child.getEnd() - node.getStart();
           output += nodeText.substring(prevEnd, childStart);
-          let childText = this.visit(child);
+          let childText = this.visit(child, typeChecker);
           output += childText;
           prevEnd = childEnd;
         });
@@ -83,6 +134,15 @@ export class Minifier {
         return output;
       }
     }
+  }
+
+  private renameIdent(node: ts.Node) {
+    let newName = this.renameProperty(node.getText());
+    return newName;
+  }
+
+  private ident(node: ts.Node) {
+    return node.getText();
   }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
@@ -171,11 +231,11 @@ export class Minifier {
   }
 }
 
-// if (DEBUG) {
-//   var host = ts.createCompilerHost(options);
-//   var program = ts.createProgram(['../../test/input/animal.ts'], options, host);
-//   var typeChecker = program.getTypeChecker();
-//   var sourceFile = program.getSourceFile('../../test/input/animal.ts');
-//   var minifier = new Minifier();
-//   console.log(minifier.visit(sourceFile));
-// }
+if (DEBUG) {
+  var host = ts.createCompilerHost(options);
+  var program = ts.createProgram(['../../test/input/math.ts'], options, host);
+  var typeChecker = program.getTypeChecker();
+  var sourceFile = program.getSourceFile('../../test/input/math.ts');
+  var minifier = new Minifier();
+  console.log(minifier.visit(sourceFile, typeChecker));
+}
