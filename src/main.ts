@@ -12,6 +12,8 @@ export const options: ts.CompilerOptions = {
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
+  private renameMap: {[name: string]: string} = {};
+  private lastGeneratedPropName: string = '';
 
   constructor() {}
 
@@ -37,16 +39,42 @@ export class Minifier {
 
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
   // a child node.
-  visit(node: ts.Node) {
+  visit(node: ts.Node, typeChecker?: ts.TypeChecker) {
     switch (node.kind) {
-      case ts.SyntaxKind.PropertyAccessExpression: {
-        let output = '';
-        let propAccessExp = <ts.PropertyAccessExpression>node;
-        output += this.visit(propAccessExp.expression);
-        output += '.';
-        // Adds '$mangled' to an identifier to ensure that the identifier is being altered.
-        output += propAccessExp.name.text + '$mangled';
-        return output;
+      case ts.SyntaxKind.Identifier: {
+        let parent = node.parent;
+
+        if (parent.kind === ts.SyntaxKind.PropertyDeclaration) {
+          return this.renameIdent(node);
+        } else if (parent.kind === ts.SyntaxKind.PropertyAccessExpression) {
+          let pae = <ts.PropertyAccessExpression>parent;
+          let exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
+          let childText = '';
+          if (exprSymbol) {
+            // start off by assuming the property is rename-able
+            let rename: boolean = true;
+            var re = /\.d\.ts/;
+
+            // check if a source filename of a declaration ends in .d.ts
+            exprSymbol.declarations.forEach((decl) => {
+              let fileName = decl.getSourceFile().fileName;
+              if (fileName.match(re)) rename = false;  // we can no longer rename the property
+            });
+
+            if (rename) {
+              childText = this.renameIdent(node);
+            } else {
+              childText = this.ident(node);
+            }
+          } else {
+            childText = this.renameIdent(node);
+          }
+          return childText;
+        } else if (parent.kind === ts.SyntaxKind.MethodDeclaration) {
+          return this.renameIdent(node);
+        } else {
+          return this.ident(node);
+        }
       }
       default: {
         // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
@@ -70,7 +98,7 @@ export class Minifier {
           let childStart = child.getStart() - node.getStart();
           let childEnd = child.getEnd() - node.getStart();
           output += nodeText.substring(prevEnd, childStart);
-          let childText = this.visit(child);
+          let childText = this.visit(child, typeChecker);
           output += childText;
           prevEnd = childEnd;
         });
@@ -79,6 +107,13 @@ export class Minifier {
       }
     }
   }
+
+  private renameIdent(node: ts.Node) {
+    let newName = this.renameProperty(node.getText());
+    return newName;
+  }
+
+  private ident(node: ts.Node) { return node.getText(); }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
@@ -119,6 +154,15 @@ export class Minifier {
 
   private checkReserved(str: string): boolean {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
+  }
+
+  renameProperty(name: string): string {
+    if (!this.renameMap.hasOwnProperty(name)) {
+      let newName = this.generateNextPropertyName(this.lastGeneratedPropName);
+      this.renameMap[name] = newName;
+      this.lastGeneratedPropName = newName;
+    }
+    return this.renameMap[name];
   }
 
   // Given the last code, returns a string for the new property name.
