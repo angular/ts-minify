@@ -5,6 +5,7 @@
 import * as assert from 'assert';
 import * as ts from 'typescript';
 import * as chai from 'chai';
+import * as fs from 'fs';
 import {Minifier, options} from '../../src/main';
 
 function expectTranslate(code: string) {
@@ -14,9 +15,17 @@ function expectTranslate(code: string) {
 
 function parseFile(fileName: string, fileContent: string): ts.Program {
   var defaultLibName = ts.getDefaultLibFilePath(options);
+  var libSource = fs.readFileSync(ts.getDefaultLibFilePath(options), 'utf-8');
+  var libSourceFile: ts.SourceFile;
   var compilerHost: ts.CompilerHost = {
 
     getSourceFile: function(sourceName, languageVersion) {
+      if (sourceName === defaultLibName) {
+        if (!libSourceFile) {
+          libSourceFile = ts.createSourceFile(sourceName, libSource, options.target, true);
+        }
+        return libSourceFile;
+      }
       return ts.createSourceFile(sourceName, fileContent, options.target, true);
     },
     writeFile: function(name, text, writeByteOrderMark) { var result = text; },
@@ -36,13 +45,14 @@ function parseFile(fileName: string, fileContent: string): ts.Program {
 function translateSource(content: string): string {
   var minifier = new Minifier();
   var program = parseFile('test.ts', content);
+  var typeChecker = program.getTypeChecker();
   var sourceFiles = program.getSourceFiles();
   var namesToContents = {};
 
   sourceFiles.forEach((sf) => {
     // if (not a .d.ts file) and (is a .js or .ts file)
     if (!sf.fileName.match(/\.d\.ts$/) && !!sf.fileName.match(/\.[jt]s$/)) {
-      namesToContents[sf.fileName] = minifier.visit(sf);
+      namesToContents[sf.fileName] = minifier.visit(sf, typeChecker);
     }
   });
   return namesToContents['test.ts'];
@@ -65,12 +75,19 @@ describe('Recognizes invalid TypeScript inputs', () => {
 
 describe('Visitor pattern', () => {
   it('renames identifiers of property declarations and property access expressions', () => {
-    expectTranslate('Math.random();').to.equal('$._();');
     expectTranslate('class Foo { bar: string; constructor() {} baz() { this.bar = "hello"; } }')
-        .to.equal('class Foo { $: string; constructor() {} baz() { this.$ = "hello"; } }');
+        .to.equal('class Foo { $: string; constructor() {} _() { this.$ = "hello"; } }');
     expectTranslate('for (var x in foo.bar) { var y = foo.bar.baz; }')
-      .to.equal('for (var x in $._) { var y = $._.a; }');
-    expectTranslate('class Foo {bar: string;} class Baz {bar: string;}').to.equal('');
+        .to.equal('for (var x in $._) { var y = $._.a; }');
+    expectTranslate('class Foo {bar: string;} class Baz {bar: string;}').to.equal('class Foo {$: string;} class Baz {$: string;}');
+  });
+});
+
+describe('Selective renaming', () => {
+  it('does not rename properties whose LHS expressions are declared in external files', () => {
+    expectTranslate('Math.random();').to.equal('Math.random();');
+    expectTranslate('console.log();').to.equal('console.log();');
+    expectTranslate('document.getElementById("foo");').to.equal('document.getElementById("foo");');
   });
 });
 

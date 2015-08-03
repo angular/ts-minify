@@ -1,5 +1,4 @@
 /// <reference path = '../node_modules/typescript/bin/typescript.d.ts' />
-/// <reference path = '../node_modules/typescript/bin/lib.es6.d.ts' />
 
 import * as ts from 'typescript';
 
@@ -42,66 +41,44 @@ export class Minifier {
   // a child node.
   visit(node: ts.Node, typeChecker?: ts.TypeChecker) {
     switch (node.kind) {
-      // case ts.SyntaxKind.Identifier: {
-      //   let parentKind = node.parent.kind;
-      //   if (parentKind === ts.SyntaxKind.PropertyDeclaration ||
-      //       parentKind === ts.SyntaxKind.PropertyAccessExpression) {
-      //     let newName = this.renameProperty(node.getText());
-      //     return newName;
-      //   } else {
-      //     return node.getText();
-      //   }
-      // }
-      case ts.SyntaxKind.PropertyDeclaration: {
-        let propDecl = <ts.PropertyDeclaration>node;
-        let nodeText = propDecl.getText();
-        let output = '';
-        let childText = '';
-        let nameStart = propDecl.name.getStart() - propDecl.getStart();
-        let nameEnd = propDecl.name.getEnd() - propDecl.getStart(); 
+      case ts.SyntaxKind.Identifier: {
+        let parent = node.parent;
 
-        output += nodeText.substring(0, nameStart);
-        output += this.renameIdent(propDecl.name);
-        output += nodeText.substring(nameEnd, nodeText.length);
+        if (parent.kind === ts.SyntaxKind.PropertyDeclaration) {
+          return this.renameIdent(node);
+        } else if (parent.kind === ts.SyntaxKind.PropertyAccessExpression) {
+          let pae = <ts.PropertyAccessExpression>parent;
+          let exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
+          let childText = '';
+          if (exprSymbol) {
+            // start off by assuming the property is rename-able
+            let rename: boolean = true;
+            var re = /\.d\.ts/;
 
-        return output;
+            // check if a source filename of a declaration ends in .d.ts
+            exprSymbol.declarations.forEach((decl) => {
+              let fileName = decl.getSourceFile().fileName;
+              if (fileName.match(re)) rename = false;  // we can no longer rename the property
+            });
 
-      }
-      case ts.SyntaxKind.PropertyAccessExpression: {
-        let pae = <ts.PropertyAccessExpression>node;
-        let nodeText = pae.getText();
-        let output = '';
-        let childText = '';
-        let exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
-
-        if (exprSymbol) {
-          // start off by assuming renameable
-          let rename: boolean = true;
-          var re = /\.d\.ts/;
-
-          // check if source filename of a declaration ends in .d.ts
-          exprSymbol.declarations.forEach((decl) => {
-            let fileName = decl.getSourceFile().fileName;
-            if (fileName.match(re)) rename = false;
-          });
-
-          let nameStart = pae.name.getStart() - pae.getStart();
-          let nameEnd = pae.name.getEnd() - pae.getStart();
-
-          output += nodeText.substring(0, nameStart);
-
-          if (rename) {
-            childText = this.renameIdent(pae.name);
+            if (rename) {
+              childText = this.renameIdent(node);
+            } else {
+              childText = this.ident(node);
+            }
+            console.log('childText: ' + childText);
+            return childText;
           } else {
-            childText = this.ident(pae.name);
+            return this.renameIdent(node);
           }
-
-          output += childText;
-          output += nodeText.substring(nameEnd, nodeText.length);
-
-          return output;
+        } else if (parent.kind === ts.SyntaxKind.ClassDeclaration) {
+          return this.ident(node); 
+        } else if (parent.kind === ts.SyntaxKind.MethodDeclaration) {
+          return this.renameIdent(node);
         } else {
-          return pae.getText();
+          console.log('inside else: ' + node.getText());
+          //return node.getText();
+          return this.ident(node);
         }
       }
       default: {
@@ -141,9 +118,7 @@ export class Minifier {
     return newName;
   }
 
-  private ident(node: ts.Node) {
-    return node.getText();
-  }
+  private ident(node: ts.Node) { return node.getText(); }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
@@ -231,11 +206,11 @@ export class Minifier {
   }
 }
 
-if (DEBUG) {
-  var host = ts.createCompilerHost(options);
-  var program = ts.createProgram(['../../test/input/math.ts'], options, host);
-  var typeChecker = program.getTypeChecker();
-  var sourceFile = program.getSourceFile('../../test/input/math.ts');
-  var minifier = new Minifier();
-  console.log(minifier.visit(sourceFile, typeChecker));
-}
+// if (DEBUG) {
+//   var host = ts.createCompilerHost(options);
+//   var program = ts.createProgram(['../../test/input/math.ts'], options, host);
+//   var typeChecker = program.getTypeChecker();
+//   var sourceFile = program.getSourceFile('../../test/input/math.ts');
+//   var minifier = new Minifier();
+//   console.log(minifier.visit(sourceFile, typeChecker));
+// }
