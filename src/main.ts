@@ -2,7 +2,7 @@
 
 import * as ts from 'typescript';
 
-const DEBUG = false;
+const DEBUG = true;
 
 export const options: ts.CompilerOptions = {
   allowNonTsExtensions: true,
@@ -48,17 +48,23 @@ export class Minifier {
           return this.renameIdent(node);
         } else if (parent.kind === ts.SyntaxKind.PropertyAccessExpression) {
           let pae = <ts.PropertyAccessExpression>parent;
-          let exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
+          let exprSymbol = typeChecker.getTypeAtLocation(pae.expression).symbol;
+          if (!exprSymbol) {
+            exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
+          } 
+          if (!exprSymbol) {
+            exprSymbol = typeChecker.getSymbolAtLocation(pae);
+          }
+
           let childText = '';
           if (exprSymbol) {
             // start off by assuming the property is rename-able
             let rename: boolean = true;
-            var re = /\.d\.ts/;
 
             // check if a source filename of a declaration ends in .d.ts
             exprSymbol.declarations.forEach((decl) => {
               let fileName = decl.getSourceFile().fileName;
-              if (fileName.match(re)) rename = false;  // we can no longer rename the property
+              if (fileName.match(/\.d\.ts/)) rename = false;  // we can no longer rename the property
             });
 
             if (rename) {
@@ -202,3 +208,13 @@ export class Minifier {
     }
   }
 }
+
+// if (DEBUG) {
+//   var host = ts.createCompilerHost(options);
+//   var program = ts.createProgram(['../../test/input/math.ts'], options, host);
+//   var sourceFile = program.getSourceFile('../../test/input/math.ts');
+//   var typeChecker = program.getTypeChecker();
+//   var minifier = new Minifier();
+//   console.log('========================');
+//   console.log(minifier.visit(sourceFile, typeChecker));
+// }

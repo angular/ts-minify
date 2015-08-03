@@ -84,10 +84,17 @@ describe('Visitor pattern', () => {
 });
 
 describe('Selective renaming', () => {
-  it('does not rename properties whose LHS expressions are declared in external files', () => {
+  it('does not rename property names from the standard library', () => {
     expectTranslate('Math.random();').to.equal('Math.random();');
     expectTranslate('console.log();').to.equal('console.log();');
     expectTranslate('document.getElementById("foo");').to.equal('document.getElementById("foo");');
+    expectTranslate('[1, 4, 9].map(Math.sqrt);').to.equal('[1, 4, 9].map(Math.sqrt);');
+    expectTranslate('"hello".substring(0, 2);').to.equal('"hello".substring(0, 2);');
+    expectTranslate('"hello".substr(0, 2);').to.equal('"hello".substr(0, 2);');
+    expectTranslate('Date.now();').to.equal('Date.now();');
+    expectTranslate('var bool: Boolean = new Boolean(false); bool.toString();').to.equal('var bool: Boolean = new Boolean(false); bool.toString();');
+    expectTranslate('var arr : number[] = [2,3,4]; arr.map(Math.sqrt);').to.equal('var arr : number[] = [2,3,4]; arr.map(Math.sqrt);');
+    expectTranslate('"a".toUpperCase();').to.equal('"a".toUpperCase();');
   });
 });
 
