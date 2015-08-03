@@ -5,6 +5,7 @@
 import * as assert from 'assert';
 import * as ts from 'typescript';
 import * as chai from 'chai';
+import * as fs from 'fs';
 import {Minifier, options} from '../../src/main';
 
 function expectTranslate(code: string) {
@@ -12,11 +13,20 @@ function expectTranslate(code: string) {
   return chai.expect(result);
 }
 
+var defaultLibName = ts.getDefaultLibFilePath(options);
+var libSource = fs.readFileSync(ts.getDefaultLibFilePath(options), 'utf-8');
+var libSourceFile: ts.SourceFile;
+
 function parseFile(fileName: string, fileContent: string): ts.Program {
-  var defaultLibName = ts.getDefaultLibFilePath(options);
   var compilerHost: ts.CompilerHost = {
 
     getSourceFile: function(sourceName, languageVersion) {
+      if (sourceName === defaultLibName) {
+        if (!libSourceFile) {
+          libSourceFile = ts.createSourceFile(sourceName, libSource, options.target, true);
+        }
+        return libSourceFile;
+      }
       return ts.createSourceFile(sourceName, fileContent, options.target, true);
     },
     writeFile: function(name, text, writeByteOrderMark) { var result = text; },
@@ -36,8 +46,11 @@ function parseFile(fileName: string, fileContent: string): ts.Program {
 function translateSource(content: string): string {
   var minifier = new Minifier();
   var program = parseFile('test.ts', content);
+  var typeChecker = program.getTypeChecker();
   var sourceFiles = program.getSourceFiles();
   var namesToContents = {};
+
+  minifier.setTypeChecker(typeChecker);
 
   sourceFiles.forEach((sf) => {
     // if (not a .d.ts file) and (is a .js or .ts file)
@@ -64,13 +77,29 @@ describe('Recognizes invalid TypeScript inputs', () => {
 });
 
 describe('Visitor pattern', () => {
-  it('shows correctly appends "$mangled" to an identifier of a property access expression', () => {
-    expectTranslate('Math.random();').to.equal('Math.random$mangled();');
-    expectTranslate('Class Foo { a: string; constructor() {} b() { this.a = "hello"; } }')
-        .to.equal('Class Foo { a: string; constructor() {} b() { this.a$mangled = "hello"; } }');
-    expectTranslate('for (x in foo.bar) { var y = foo.bar.baz; }')
-        .to.equal('for (x in foo.bar$mangled) { var y = foo.bar$mangled.baz$mangled; }');
-    expectTranslate('var x = foo.baz();').to.equal('var x = foo.baz$mangled();');
+  it('renames identifiers of property declarations and property access expressions', () => {
+    expectTranslate('class Foo { bar:string; constructor() {} baz() { this.bar = "hello"; } }')
+        .to.equal('class Foo { $:string; constructor() {} baz() { this.$ = "hello"; } }');
+    expectTranslate('var foo = { bar: { baz: 12; } }; foo.bar.baz;')
+        .to.equal('var foo = { $:{ _:12; } }; foo.$._;');
+    expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')
+        .to.equal('class Foo {$:string;} class Baz {$:string;}');
+  });
+  it('throws an error when symbol information cannot be extracted from a property access expression',
+     () => {
+       chai.expect(() => {
+         expectTranslate('var x = {}; x.y = {}; x.y.z = 12;')
+             .to.throw(/Symbol information could not be extracted/);
+       });
+     });
+});
+
+describe('Selective renaming', () => {
+  it('does not rename property names from the standard library', () => {
+    expectTranslate('Math.random();').to.equal('Math.random();');
+    expectTranslate('document.getElementById("foo");').to.equal('document.getElementById("foo");');
+    expectTranslate('[1, 4, 9].map(Math.sqrt);').to.equal('[1, 4, 9].map(Math.sqrt);');
+    expectTranslate('"hello".substring(0, 2);').to.equal('"hello".substring(0, 2);');
   });
 });
 
