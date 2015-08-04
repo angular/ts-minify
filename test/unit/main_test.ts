@@ -13,10 +13,11 @@ function expectTranslate(code: string) {
   return chai.expect(result);
 }
 
+var defaultLibName = ts.getDefaultLibFilePath(options);
+var libSource = fs.readFileSync(ts.getDefaultLibFilePath(options), 'utf-8');
+var libSourceFile: ts.SourceFile;
+
 function parseFile(fileName: string, fileContent: string): ts.Program {
-  var defaultLibName = ts.getDefaultLibFilePath(options);
-  var libSource = fs.readFileSync(ts.getDefaultLibFilePath(options), 'utf-8');
-  var libSourceFile: ts.SourceFile;
   var compilerHost: ts.CompilerHost = {
 
     getSourceFile: function(sourceName, languageVersion) {
