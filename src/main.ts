@@ -51,11 +51,10 @@ export class Minifier {
           let exprSymbol = typeChecker.getTypeAtLocation(pae.expression).symbol;
           if (!exprSymbol) {
             exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
-          } 
+          }
           if (!exprSymbol) {
             exprSymbol = typeChecker.getSymbolAtLocation(pae);
           }
-
           let childText = '';
           if (exprSymbol) {
             // start off by assuming the property is rename-able
@@ -64,7 +63,9 @@ export class Minifier {
             // check if a source filename of a declaration ends in .d.ts
             exprSymbol.declarations.forEach((decl) => {
               let fileName = decl.getSourceFile().fileName;
-              if (fileName.match(/\.d\.ts/)) rename = false;  // we can no longer rename the property
+              if (fileName.match(/\.d\.ts/)) {
+                rename = false;  // we can no longer rename the property
+              }
             });
 
             if (rename) {
@@ -209,12 +210,3 @@ export class Minifier {
   }
 }
 
-// if (DEBUG) {
-//   var host = ts.createCompilerHost(options);
-//   var program = ts.createProgram(['../../test/input/math.ts'], options, host);
-//   var sourceFile = program.getSourceFile('../../test/input/math.ts');
-//   var typeChecker = program.getTypeChecker();
-//   var minifier = new Minifier();
-//   console.log('========================');
-//   console.log(minifier.visit(sourceFile, typeChecker));
-// }
