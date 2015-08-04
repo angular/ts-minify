@@ -116,8 +116,7 @@ export class Minifier {
   }
 
   private renameIdent(node: ts.Node) {
-    let newName = this.renameProperty(node.getText());
-    return newName;
+    return this.renameProperty(node.getText());
   }
 
   private ident(node: ts.Node) { return node.getText(); }
