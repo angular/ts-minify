@@ -85,6 +85,11 @@ describe('Visitor pattern', () => {
     expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')
         .to.equal('class Foo {$:string;} class Baz {$:string;}');
   });
+  it('throws an error when symbol information cannot be extracted from a property access expression', () => {
+    chai.expect(() => {
+      expectTranslate('var x = {}; x.y = {}; x.y.z = 12;').to.throw(/Symbol information could not be extracted/);
+    });
+  });
 });
 
 describe('Selective renaming', () => {
