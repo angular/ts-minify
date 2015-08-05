@@ -12,7 +12,7 @@ export const options: ts.CompilerOptions = {
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
-  // Key: (Eventually fully qualified) original property name 
+  // Key: (Eventually fully qualified) original property name
   // Value: new generated property name
   private renameMap: {[name: string]: string} = {};
   private lastGeneratedPropName: string = '';
@@ -41,9 +41,7 @@ export class Minifier {
     }
   }
 
-  setTypeChecker(typeChecker: ts.TypeChecker) {
-    this.typeChecker = typeChecker;
-  }
+  setTypeChecker(typeChecker: ts.TypeChecker) { this.typeChecker = typeChecker; }
 
   reportError(n: ts.Node, message: string) {
     var file = n.getSourceFile();
@@ -84,7 +82,8 @@ export class Minifier {
             }
           }
 
-          // Make sure to rename the property, not the LHS, which can also boil down to just an Identifier.
+          // Make sure to rename the property, not the LHS, which can also boil down to just an
+          // Identifier.
           if (rename) {
             output += this.renameIdent(pae.name);
           } else {
@@ -140,18 +139,17 @@ export class Minifier {
   }
 
   private getExpressionSymbol(node: ts.PropertyAccessExpression) {
-    let exprSymbol = this.typeChecker.getSymbolAtLocation(node.name); 
+    let exprSymbol = this.typeChecker.getSymbolAtLocation(node.name);
 
-    // Sometimes the RHS expression does not have a symbol, so use the symbol at the property access expression
+    // Sometimes the RHS expression does not have a symbol, so use the symbol at the property access
+    // expression
     if (!exprSymbol) {
       exprSymbol = this.typeChecker.getSymbolAtLocation(node);
     }
     return exprSymbol;
   }
 
-  private renameIdent(node: ts.Node) {
-    return this.renameProperty(this.ident(node));
-  }
+  private renameIdent(node: ts.Node) { return this.renameProperty(this.ident(node)); }
 
   private ident(node: ts.Node) { return node.getText(); }
 
