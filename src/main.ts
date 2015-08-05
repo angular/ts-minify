@@ -139,9 +139,7 @@ export class Minifier {
     // this.typeChecker.getTypeAtLocation(node.expression).symbol;
 
     // Sometimes the LHS expression does not have a symbol, so use the symbol at the property access expression
-    // ie: string literals do not have symbols
     if (!exprSymbol) {
-      console.log('last try');
       exprSymbol = this.typeChecker.getSymbolAtLocation(node);
     }
     return exprSymbol;
