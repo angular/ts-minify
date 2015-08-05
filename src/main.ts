@@ -2,7 +2,7 @@
 
 import * as ts from 'typescript';
 
-const DEBUG = true;
+const DEBUG = false;
 
 export const options: ts.CompilerOptions = {
   allowNonTsExtensions: true,
@@ -12,8 +12,11 @@ export const options: ts.CompilerOptions = {
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
+  // Key: (Eventually fully qualified) original property name 
+  // Value: new generated property name
   private renameMap: {[name: string]: string} = {};
   private lastGeneratedPropName: string = '';
+  private typeChecker: ts.TypeChecker;
 
   constructor() {}
 
@@ -37,51 +40,67 @@ export class Minifier {
     }
   }
 
+  setTypeChecker(typeChecker: ts.TypeChecker) {
+    this.typeChecker = typeChecker;
+  }
+
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
   // a child node.
-  visit(node: ts.Node, typeChecker?: ts.TypeChecker) {
+  visit(node: ts.Node) {
     switch (node.kind) {
-      case ts.SyntaxKind.Identifier: {
-        let parent = node.parent;
+      case ts.SyntaxKind.PropertyAccessExpression: {
+        let pae = <ts.PropertyAccessExpression>node;
+        let exprSymbol = this.getExpressionSymbol(pae);
+        let childText = '';
+        let output = '';
+        let children = pae.getChildren();
 
-        if (parent.kind === ts.SyntaxKind.PropertyDeclaration) {
-          return this.renameIdent(node);
-        } else if (parent.kind === ts.SyntaxKind.PropertyAccessExpression) {
-          let pae = <ts.PropertyAccessExpression>parent;
-          let exprSymbol = typeChecker.getTypeAtLocation(pae.expression).symbol;
-          if (!exprSymbol) {
-            exprSymbol = typeChecker.getSymbolAtLocation(pae.expression);
-          }
-          if (!exprSymbol) {
-            exprSymbol = typeChecker.getSymbolAtLocation(pae);
-          }
-          let childText = '';
-          if (exprSymbol) {
-            // start off by assuming the property is rename-able
-            let rename: boolean = true;
-
-            // check if a source filename of a declaration ends in .d.ts
-            exprSymbol.declarations.forEach((decl) => {
-              let fileName = decl.getSourceFile().fileName;
-              if (fileName.match(/\.d\.ts/)) {
-                rename = false;  // we can no longer rename the property
-              }
-            });
-
-            if (rename) {
-              childText = this.renameIdent(node);
-            } else {
-              childText = this.ident(node);
-            }
+        for (var child of children) {
+          if (child.kind !== ts.SyntaxKind.Identifier) {
+            output += this.visit(child);
           } else {
-            childText = this.renameIdent(node);
+            // Early exit when exprSymbol is undefined.
+            if (!exprSymbol) {
+              throw new Error('Symbol information could not be extracted.\n');
+            } else {
+              // start off by assuming the property is rename-able
+              let rename: boolean = true;
+
+              // check if a source filename of a declaration ends in .d.ts
+              for (var decl of exprSymbol.declarations) {
+                let fileName = decl.getSourceFile().fileName;
+                if (fileName.match(/\.d\.ts/)) {
+                  rename = false;  // we can no longer rename the property
+                  break;
+                }
+              }
+
+              // Make sure to rename the property, not the LHS, which can also boil down to just an Identifier.
+              if (rename && pae.name === child) {
+                childText = this.renameIdent(child);
+              } else {
+                childText = this.ident(child);
+              }
+
+              output += childText;
+            }
           }
-          return childText;
-        } else if (parent.kind === ts.SyntaxKind.MethodDeclaration) {
-          return this.renameIdent(node);
-        } else {
-          return this.ident(node);
         }
+        return output;
+      }
+      // These two have the same wanted behavior.
+      case ts.SyntaxKind.PropertyAssignment:
+      case ts.SyntaxKind.PropertyDeclaration: {
+        let children = node.getChildren();
+        let output = '';
+        for (var child of children) {
+          if (child.kind === ts.SyntaxKind.Identifier) {
+            output += this.renameIdent(child);
+          } else {
+            output += this.visit(child);
+          }
+        }
+        return output;
       }
       default: {
         // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
@@ -105,7 +124,7 @@ export class Minifier {
           let childStart = child.getStart() - node.getStart();
           let childEnd = child.getEnd() - node.getStart();
           output += nodeText.substring(prevEnd, childStart);
-          let childText = this.visit(child, typeChecker);
+          let childText = this.visit(child);
           output += childText;
           prevEnd = childEnd;
         });
@@ -115,8 +134,24 @@ export class Minifier {
     }
   }
 
+  private getExpressionSymbol(node: ts.PropertyAccessExpression) {
+    // gets information about symbol
+    let exprSymbol = this.typeChecker.getSymbolAtLocation(node.expression); 
+
+    // USEFUL LATER: to get symbol information of a type
+    // this.typeChecker.getTypeAtLocation(node.expression).symbol;
+
+    // Sometimes the LHS expression does not have a symbol, so use the symbol at the property access expression
+    // ie: string literals do not have symbols
+    if (!exprSymbol) {
+      console.log('last try');
+      exprSymbol = this.typeChecker.getSymbolAtLocation(node);
+    }
+    return exprSymbol;
+  }
+
   private renameIdent(node: ts.Node) {
-    return this.renameProperty(node.getText());
+    return this.renameProperty(this.ident(node));
   }
 
   private ident(node: ts.Node) { return node.getText(); }
@@ -164,9 +199,7 @@ export class Minifier {
 
   renameProperty(name: string): string {
     if (!this.renameMap.hasOwnProperty(name)) {
-      let newName = this.generateNextPropertyName(this.lastGeneratedPropName);
-      this.renameMap[name] = newName;
-      this.lastGeneratedPropName = newName;
+      this.renameMap[name] = this.generateNextPropertyName(this.lastGeneratedPropName);
     }
     return this.renameMap[name];
   }
@@ -181,6 +214,7 @@ export class Minifier {
     var firstAlpha = 'a';
 
     if (len === 0) {
+      this.lastGeneratedPropName = firstChar;
       return firstChar;
     }
 
@@ -191,7 +225,9 @@ export class Minifier {
       } else {
         chars[i] = firstChar;
         if (i === 0) {
-          return firstChar + (chars.join(''));
+          let newName = firstChar + (chars.join(''));
+          this.lastGeneratedPropName = newName;
+          return newName;
         }
       }
     }
@@ -203,8 +239,8 @@ export class Minifier {
     } else if (chars[0].match(/[0-9]/)) {
       return (firstAlpha + Array(len).join(firstChar));
     } else {
+      this.lastGeneratedPropName = newName;
       return newName;
     }
   }
 }
-

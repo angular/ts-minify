@@ -50,10 +50,12 @@ function translateSource(content: string): string {
   var sourceFiles = program.getSourceFiles();
   var namesToContents = {};
 
+  minifier.setTypeChecker(typeChecker);
+
   sourceFiles.forEach((sf) => {
     // if (not a .d.ts file) and (is a .js or .ts file)
     if (!sf.fileName.match(/\.d\.ts$/) && !!sf.fileName.match(/\.[jt]s$/)) {
-      namesToContents[sf.fileName] = minifier.visit(sf, typeChecker);
+      namesToContents[sf.fileName] = minifier.visit(sf);
     }
   });
   return namesToContents['test.ts'];
@@ -76,29 +78,21 @@ describe('Recognizes invalid TypeScript inputs', () => {
 
 describe('Visitor pattern', () => {
   it('renames identifiers of property declarations and property access expressions', () => {
-    expectTranslate('class Foo { bar: string; constructor() {} baz() { this.bar = "hello"; } }')
-        .to.equal('class Foo { $: string; constructor() {} _() { this.$ = "hello"; } }');
-    expectTranslate('for (var x in foo.bar) { var y = foo.bar.baz; }')
-        .to.equal('for (var x in $._) { var y = $._.a; }');
+    expectTranslate('class Foo { bar:string; constructor() {} baz() { this.bar = "hello"; } }')
+        .to.equal('class Foo { $:string; constructor() {} baz() { this.$ = "hello"; } }');
+    expectTranslate('var foo = { bar: { baz: 12; } }; foo.bar.baz;')
+        .to.equal('var foo = { $:{ _:12; } }; foo.$._;');
     expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')
-        .to.equal('class Foo {$: string;} class Baz {$: string;}');
+        .to.equal('class Foo {$:string;} class Baz {$:string;}');
   });
 });
 
 describe('Selective renaming', () => {
   it('does not rename property names from the standard library', () => {
     expectTranslate('Math.random();').to.equal('Math.random();');
-    expectTranslate('console.log();').to.equal('console.log();');
     expectTranslate('document.getElementById("foo");').to.equal('document.getElementById("foo");');
     expectTranslate('[1, 4, 9].map(Math.sqrt);').to.equal('[1, 4, 9].map(Math.sqrt);');
     expectTranslate('"hello".substring(0, 2);').to.equal('"hello".substring(0, 2);');
-    expectTranslate('"hello".substr(0, 2);').to.equal('"hello".substr(0, 2);');
-    expectTranslate('Date.now();').to.equal('Date.now();');
-    expectTranslate('var bool: Boolean = new Boolean(false); bool.toString();')
-        .to.equal('var bool: Boolean = new Boolean(false); bool.toString();');
-    expectTranslate('var arr : number[] = [2,3,4]; arr.map(Math.sqrt);')
-        .to.equal('var arr : number[] = [2,3,4]; arr.map(Math.sqrt);');
-    expectTranslate('"a".toUpperCase();').to.equal('"a".toUpperCase();');
   });
 });
 
