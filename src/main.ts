@@ -51,7 +51,6 @@ export class Minifier {
       case ts.SyntaxKind.PropertyAccessExpression: {
         let pae = <ts.PropertyAccessExpression>node;
         let exprSymbol = this.getExpressionSymbol(pae);
-        let childText = '';
         let output = '';
         let children = pae.getChildren();
 
@@ -77,12 +76,10 @@ export class Minifier {
 
               // Make sure to rename the property, not the LHS, which can also boil down to just an Identifier.
               if (rename && pae.name === child) {
-                childText = this.renameIdent(child);
+                output += this.renameIdent(child);
               } else {
-                childText = this.ident(child);
+                output += this.ident(child);
               }
-
-              output += childText;
             }
           }
         }
