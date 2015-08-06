@@ -80,9 +80,7 @@ export class Minifier {
 
         var isExternal = exprSymbol.declarations.some(
             (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal) {
-          return output + this.ident(pae.name);
-        }
+        if (isExternal) return output + this.ident(pae.name);
         return output + this.renameIdent(pae.name);
       }
       // These two have the same wanted behavior.
@@ -138,7 +136,6 @@ export class Minifier {
     if (!exprSymbol) {
       exprSymbol = this.typeChecker.getSymbolAtLocation(node);
     }
-
     return exprSymbol;
   }
 
