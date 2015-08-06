@@ -12,7 +12,7 @@ export const options: ts.CompilerOptions = {
 
 export const minifierOptions = {
   failFast: true
-}
+};
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
@@ -78,7 +78,8 @@ export class Minifier {
           return;
         }
 
-        var isExternal = exprSymbol.declarations.some((decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
+        var isExternal = exprSymbol.declarations.some(
+            (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
         if (isExternal) {
           return output + this.ident(pae.name);
         }
