@@ -10,6 +10,10 @@ export const options: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES5,
 };
 
+export const minifierOptions = {
+  failFast: true
+}
+
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
   // Key: (Eventually fully qualified) original property name
@@ -49,8 +53,10 @@ export class Minifier {
     var start = n.getStart(file);
     var pos = file.getLineAndCharacterOfPosition(start);
     var fullMessage = `${fileName}:${pos.line + 1}:${pos.character + 1}: ${message}`;
-    throw new Error(fullMessage);
     this.errors.push(fullMessage);
+    if (minifierOptions.failFast) {
+      throw new Error(fullMessage);
+    }
   }
 
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
@@ -69,28 +75,14 @@ export class Minifier {
         // Early exit when exprSymbol is undefined.
         if (!exprSymbol) {
           this.reportError(pae.name, 'Symbol information could not be extracted.\n');
-        } else {
-          // start off by assuming the property is rename-able
-          let rename: boolean = true;
-
-          // check if a source filename of a declaration ends in .d.ts
-          for (var decl of exprSymbol.declarations) {
-            let fileName = decl.getSourceFile().fileName;
-            if (fileName.match(/\.d\.ts/)) {
-              rename = false;  // we can no longer rename the property
-              break;
-            }
-          }
-
-          // Make sure to rename the property, not the LHS, which can also boil down to just an
-          // Identifier.
-          if (rename) {
-            output += this.renameIdent(pae.name);
-          } else {
-            output += this.ident(pae.name);
-          }
+          return;
         }
-        return output;
+
+        var isExternal = exprSymbol.declarations.some((decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
+        if (isExternal) {
+          return output + this.ident(pae.name);
+        }
+        return output + this.renameIdent(pae.name);
       }
       // These two have the same wanted behavior.
       case ts.SyntaxKind.PropertyAssignment:
@@ -140,12 +132,12 @@ export class Minifier {
 
   private getExpressionSymbol(node: ts.PropertyAccessExpression) {
     let exprSymbol = this.typeChecker.getSymbolAtLocation(node.name);
-
     // Sometimes the RHS expression does not have a symbol, so use the symbol at the property access
     // expression
     if (!exprSymbol) {
       exprSymbol = this.typeChecker.getSymbolAtLocation(node);
     }
+
     return exprSymbol;
   }
 
