@@ -5,7 +5,7 @@
   "repository": "https://github.com/angular/ts-minify",
   "license": "Apache-2.0",
   "scripts": {
-    "prepublish": "npm install tsd@^0.6.3 && tsd install node && tsd install mocha && tsd install chai && tsd install fs-extra",
+    "prepublish": "npm install tsd@^0.6.3 && tsd reinstall --overwrite",
     "test": "gulp unit.test"
   },
   "dependencies": {

@@ -1,21 +1,21 @@
 {
-  "version": "v4",
-  "repo": "borisyankov/DefinitelyTyped",
-  "ref": "master",
-  "path": "typings",
-  "bundle": "typings/tsd.d.ts",
-  "installed": {
-    "fs-extra/fs-extra.d.ts": {
-      "commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
-    },
-    "node/node.d.ts": {
-      "commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
-    },
-    "mocha/mocha.d.ts": {
-      "commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
-    },
-    "chai/chai.d.ts": {
-      "commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
-    }
-  }
+	"version": "v4",
+	"repo": "borisyankov/DefinitelyTyped",
+	"ref": "master",
+	"path": "typings",
+	"bundle": "typings/tsd.d.ts",
+	"installed": {
+		"fs-extra/fs-extra.d.ts": {
+			"commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
+		},
+		"node/node.d.ts": {
+			"commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
+		},
+		"mocha/mocha.d.ts": {
+			"commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
+		},
+		"chai/chai.d.ts": {
+			"commit": "a95ee80de0d4a56b7c5fc82ca19145fc239e76f4"
+		}
+	}
 }
