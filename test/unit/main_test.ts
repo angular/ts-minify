@@ -70,7 +70,7 @@ describe('Recognizes invalid TypeScript inputs', () => {
     chai.expect(() => minifier.checkForErrors(program)).to.throw(/Malformed TypeScript/);
   });
   it('does not throw an error when fed valid TypeScript', () => {
-    var minifer = new Minifier;
+    var minifer = new Minifier();
     var program = parseFile('test.ts', '(function blah() {})');
     chai.expect(() => minifer.checkForErrors(program)).to.not.throw();
   })
@@ -127,5 +127,31 @@ describe('Next property name generation', () => {
     var minifier = new Minifier();
     // skips generating 'in', which is a reserved word
     assert.equal(minifier.generateNextPropertyName('im'), 'io');
-  })
+  });
+});
+
+describe('output paths', () => {
+  it('correctly flattens file structure when no base path specified', () => {
+    var minifier = new Minifier();
+    chai.expect(minifier.getOutputPath('/a/b/c.ts', '/x')).to.equal('/x/c.ts');
+  });
+  it('correctly outputs file with file directory structure when given a base path', () => {
+    var minifier = new Minifier({basePath: '/a'});
+    chai.expect(minifier.getOutputPath('/a/b/c/d.ts', '/x')).to.equal('/x/b/c/d.ts');
+    chai.expect(minifier.getOutputPath('/a/b/c/d.ts')).to.equal('b/c/d.ts');
+  });
+  // .
+  // ├── output
+  // ├── something
+  // │   └── test
+  // │       └── input
+  // │           └── math.ts
+  // └── test
+  //     └── input
+  it('correctly outputs file with file directory structure when given basePath that appears inside filePath',
+     () => {
+       var minifier = new Minifier({basePath: 'test/input'});
+       chai.expect(minifier.getOutputPath('something/test/input/math.ts', 'output'))
+           .to.equal('output/something/test/input/math.ts');
+     });
 });

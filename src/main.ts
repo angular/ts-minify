@@ -1,6 +1,10 @@
-/// <reference path = '../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path ='../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path='../typings/fs-extra/fs-extra.d.ts' />
 
 import * as ts from 'typescript';
+import * as path from 'path';
+import * as fsx from 'fs-extra';
+import * as fs from 'fs';
 
 const DEBUG = false;
 
@@ -10,9 +14,10 @@ export const options: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES5,
 };
 
-export const minifierOptions = {
-  failFast: true
-};
+export interface MinifierOptions {
+  failFast?: boolean;
+  basePath?: string;
+}
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
@@ -23,7 +28,7 @@ export class Minifier {
   private typeChecker: ts.TypeChecker;
   private errors: string[] = [];
 
-  constructor() {}
+  constructor(private minifierOptions: MinifierOptions = {}) {}
 
   checkForErrors(program: ts.Program) {
     var errors = [];
@@ -54,14 +59,42 @@ export class Minifier {
     var pos = file.getLineAndCharacterOfPosition(start);
     var fullMessage = `${fileName}:${pos.line + 1}:${pos.character + 1}: ${message}`;
     this.errors.push(fullMessage);
-    if (minifierOptions.failFast) {
+    if (this.minifierOptions.failFast) {
       throw new Error(fullMessage);
     }
   }
 
+  renameProgram(fileNames: string[], destination?: string) {
+    var host = ts.createCompilerHost(options);
+    var program = ts.createProgram(fileNames, options, host);
+    this.typeChecker = program.getTypeChecker();
+
+    program.getSourceFiles()
+        .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
+        .forEach((f) => {
+          var renamedTSCode = this.visit(f);
+          var fileName = this.getOutputPath(f.fileName, destination);
+          fsx.mkdirsSync(path.dirname(fileName));
+          fs.writeFileSync(fileName, renamedTSCode);
+        });
+  }
+
+  getOutputPath(filePath: string, destination: string = '.'): string {
+    // no base path, flatten file structure and output to destination
+    if (!this.minifierOptions.basePath) {
+      return path.join(destination, path.basename(filePath));
+    }
+
+    this.minifierOptions.basePath = path.resolve(process.cwd(), this.minifierOptions.basePath);
+
+    // given a base path, preserve file directory structure
+    var subFilePath = filePath.replace(this.minifierOptions.basePath, '');
+    return path.join(destination, subFilePath);
+  }
+
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
   // a child node.
-  visit(node: ts.Node) {
+  visit(node: ts.Node): string {
     switch (node.kind) {
       case ts.SyntaxKind.PropertyAccessExpression: {
         let pae = <ts.PropertyAccessExpression>node;
