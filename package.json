@@ -11,7 +11,7 @@
   "dependencies": {
     "typescript": "alexeagle/TypeScript#error_is_class",
     "gulp": ">=3.9.0",
-    "fs-extra": "^0.23.0",
+    "fs-extra": "^0.23.0"
   },
   "devDependencies": {
     "clang-format": "^1.0.25",
