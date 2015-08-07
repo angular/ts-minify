@@ -1,6 +1,10 @@
-/// <reference path = '../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path ='../node_modules/typescript/bin/typescript.d.ts' />
+/// <reference path='../typings/fs-extra/fs-extra.d.ts' />
 
 import * as ts from 'typescript';
+import * as path from 'path';
+import * as fsx from 'fs-extra';
+import * as fs from 'fs';
 
 const DEBUG = false;
 
@@ -59,9 +63,34 @@ export class Minifier {
     }
   }
 
+  // Default to outputting files to ./build/output folder
+  renameProgram(fileNames: string[], destination = './build/output') {
+    var host = ts.createCompilerHost(options);
+    var program = ts.createProgram(fileNames, options, host);
+    this.typeChecker = program.getTypeChecker();
+    var fileSet: { [s: string]: boolean } = {};
+    // why? FIGURE OUT
+    fileNames.forEach((f) => fileSet[f] = true);
+
+    program.getSourceFiles()
+      .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
+      .forEach((f) => {
+        var renamedTSCode = this.visit(f);
+        var fileName = this.getOutputPath(f.fileName, destination);
+        fsx.mkdirsSync(path.dirname(fileName));
+        fs.writeFileSync(fileName, renamedTSCode);
+      });
+  }  
+
+  getOutputPath(fileName: string, destination: string): string {
+    var parsedFile = path.parse(fileName);
+    var renamedFile = `${destination}/${parsedFile.name}${parsedFile.ext}`;
+    return renamedFile;
+  }
+
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
   // a child node.
-  visit(node: ts.Node) {
+  visit(node: ts.Node): string {
     switch (node.kind) {
       case ts.SyntaxKind.PropertyAccessExpression: {
         let pae = <ts.PropertyAccessExpression>node;
