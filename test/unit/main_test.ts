@@ -127,7 +127,7 @@ describe('Next property name generation', () => {
     var minifier = new Minifier();
     // skips generating 'in', which is a reserved word
     assert.equal(minifier.generateNextPropertyName('im'), 'io');
-  })
+  });
 });
 
 describe('output paths', () => {
@@ -136,5 +136,5 @@ describe('output paths', () => {
     chai.expect(minifier.getOutputPath('/a/b/c.ts', './build/x')).to.equal('./build/x/c.ts');
     chai.expect(minifier.getOutputPath('a/b.ts', './build/x')).to.equal('./build/x/b.ts');
     chai.expect(minifier.getOutputPath('a/b.js', './build/x')).to.equal('./build/x/b.js');
-  })
+  });
 });

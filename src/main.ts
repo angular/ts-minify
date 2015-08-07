@@ -68,19 +68,19 @@ export class Minifier {
     var host = ts.createCompilerHost(options);
     var program = ts.createProgram(fileNames, options, host);
     this.typeChecker = program.getTypeChecker();
-    var fileSet: { [s: string]: boolean } = {};
+    var fileSet: {[s: string]: boolean} = {};
     // why? FIGURE OUT
     fileNames.forEach((f) => fileSet[f] = true);
 
     program.getSourceFiles()
-      .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
-      .forEach((f) => {
-        var renamedTSCode = this.visit(f);
-        var fileName = this.getOutputPath(f.fileName, destination);
-        fsx.mkdirsSync(path.dirname(fileName));
-        fs.writeFileSync(fileName, renamedTSCode);
-      });
-  }  
+        .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
+        .forEach((f) => {
+          var renamedTSCode = this.visit(f);
+          var fileName = this.getOutputPath(f.fileName, destination);
+          fsx.mkdirsSync(path.dirname(fileName));
+          fs.writeFileSync(fileName, renamedTSCode);
+        });
+  }
 
   getOutputPath(fileName: string, destination: string): string {
     var parsedFile = path.parse(fileName);
