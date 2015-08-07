@@ -68,10 +68,6 @@ export class Minifier {
     var host = ts.createCompilerHost(options);
     var program = ts.createProgram(fileNames, options, host);
     this.typeChecker = program.getTypeChecker();
-    var fileSet: {[s: string]: boolean} = {};
-    // why? FIGURE OUT
-    fileNames.forEach((f) => fileSet[f] = true);
-
     program.getSourceFiles()
         .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
         .forEach((f) => {
@@ -82,8 +78,8 @@ export class Minifier {
         });
   }
 
-  getOutputPath(fileName: string, destination: string): string {
-    var parsedFile = path.parse(fileName);
+  getOutputPath(filePath: string, destination: string): string {
+    var parsedFile = path.parse(filePath);
     var renamedFile = `${destination}/${parsedFile.name}${parsedFile.ext}`;
     return renamedFile;
   }
