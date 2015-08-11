@@ -65,7 +65,6 @@ export class Minifier {
     }
   }
 
-  // Default to outputting files to ./build/output folder
   renameProgram(fileNames: string[], destination?: string) {
     var host = ts.createCompilerHost(options);
     var program = ts.createProgram(fileNames, options, host);
