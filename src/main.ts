@@ -14,9 +14,10 @@ export const options: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES5,
 };
 
-export const minifierOptions = {
-  failFast: true
-};
+export interface MinifierOptions {
+  failFast?: boolean;
+  basePath?: string;
+}
 
 export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
@@ -26,8 +27,9 @@ export class Minifier {
   private lastGeneratedPropName: string = '';
   private typeChecker: ts.TypeChecker;
   private errors: string[] = [];
+  private minifierOptions: MinifierOptions = {};
 
-  constructor() {}
+  constructor(options: MinifierOptions = {}) { this.minifierOptions = options; }
 
   checkForErrors(program: ts.Program) {
     var errors = [];
@@ -58,16 +60,17 @@ export class Minifier {
     var pos = file.getLineAndCharacterOfPosition(start);
     var fullMessage = `${fileName}:${pos.line + 1}:${pos.character + 1}: ${message}`;
     this.errors.push(fullMessage);
-    if (minifierOptions.failFast) {
+    if (this.minifierOptions.failFast) {
       throw new Error(fullMessage);
     }
   }
 
   // Default to outputting files to ./build/output folder
-  renameProgram(fileNames: string[], destination = './build/output') {
+  renameProgram(fileNames: string[], destination?: string) {
     var host = ts.createCompilerHost(options);
     var program = ts.createProgram(fileNames, options, host);
     this.typeChecker = program.getTypeChecker();
+
     program.getSourceFiles()
         .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
         .forEach((f) => {
@@ -78,10 +81,23 @@ export class Minifier {
         });
   }
 
-  getOutputPath(filePath: string, destination: string): string {
-    var parsedFile = path.parse(filePath);
-    var renamedFile = `${destination}/${parsedFile.name}${parsedFile.ext}`;
-    return renamedFile;
+  getOutputPath(filePath: string, destination?: string): string {
+    // convert everything to absolute paths
+    var destination = path.resolve(process.cwd(), destination || '.');
+    var filePath = path.resolve(process.cwd(), filePath);
+
+    // no base path, flatten file structure and output to destination
+    if (!this.minifierOptions.basePath) {
+      return path.join(destination, path.basename(filePath));
+    }
+
+    if (!path.isAbsolute(this.minifierOptions.basePath)) {
+      this.minifierOptions.basePath = path.resolve(process.cwd(), this.minifierOptions.basePath);
+    }
+
+    // given a base path, preserve file directory structure
+    var subFilePath = filePath.replace(this.minifierOptions.basePath, '');
+    return path.join(destination, subFilePath);
   }
 
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of

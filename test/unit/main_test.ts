@@ -70,7 +70,7 @@ describe('Recognizes invalid TypeScript inputs', () => {
     chai.expect(() => minifier.checkForErrors(program)).to.throw(/Malformed TypeScript/);
   });
   it('does not throw an error when fed valid TypeScript', () => {
-    var minifer = new Minifier;
+    var minifer = new Minifier();
     var program = parseFile('test.ts', '(function blah() {})');
     chai.expect(() => minifer.checkForErrors(program)).to.not.throw();
   })
@@ -131,10 +131,13 @@ describe('Next property name generation', () => {
 });
 
 describe('output paths', () => {
-  it('correctly writes within the path', () => {
+  it('correctly flattens file structure when no base path specified', () => {
     var minifier = new Minifier();
-    chai.expect(minifier.getOutputPath('/a/b/c.ts', './build/x')).to.equal('./build/x/c.ts');
-    chai.expect(minifier.getOutputPath('a/b.ts', './build/x')).to.equal('./build/x/b.ts');
-    chai.expect(minifier.getOutputPath('a/b.js', './build/x')).to.equal('./build/x/b.js');
+    chai.expect(minifier.getOutputPath('/a/b/c.ts', '/x')).to.equal('/x/c.ts');
+  });
+  it('correctly outputs file with file directory structure when given a base path', () => {
+    var minifier = new Minifier({basePath: '/a'});
+    chai.expect(minifier.getOutputPath('/a/b/c/d.ts', '/x')).to.equal('/x/b/c/d.ts');
+    chai.expect(minifier.getOutputPath('/a/b/c/d.ts')).to.equal(process.cwd() + '/b/c/d.ts');
   });
 });
