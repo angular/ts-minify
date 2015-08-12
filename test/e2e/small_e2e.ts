@@ -1,11 +1,21 @@
 import {Minifier, options, MinifierOptions} from '../../src/main';
-var tsc = require('typescript-compiler');
+import * as ts from 'typescript';
+var exec = require('child_process').exec;
 
 function runE2ETests() {
-	// base path is set to ts-minfy/
-	var minifier = new Minifier({ failFast: true, basePath: '../..' });
-	minifier.renameProgram(['../input/e2e_input.ts'], '../../build/output');
-	// compile renamed program
-	tsc.compile(['../../build/output/e2e_input.ts'], '--module commonjs --out ../../build/output/e2e_input.js');
-	require('../../build/output/e2e_input.js');
+  // base path is set to ts-minfy/
+  var minifier = new Minifier({failFast: true, basePath: '../..'});
+  minifier.renameProgram(['../input/e2e_input.ts', '../../typings/node/node.d.ts'],
+                         '../../build/output');
+  // compile renamed program
+  var child = exec('tsc', function(error, stdout, stderr) {
+    if (stdout) console.log(stdout);
+    if (stderr) console.log(stderr);
+    if (error !== null) {
+      console.log('exec error: ' + error);
+    }
+  });
+  require('../../output/test/input/e2e_input');
 }
+
+runE2ETests();

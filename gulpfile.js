@@ -3,6 +3,7 @@ var mocha = require('gulp-mocha');
 var typescript = require('typescript');
 var tsc = require('gulp-typescript');
 var del = require('del');
+var exec = require('child_process').exec;
 
 var clangFormat = require('clang-format');
 var formatter = require('gulp-clang-format');
@@ -41,8 +42,15 @@ gulp.task('unit.test', ['test.compile'], function() {
   return gulp.src('build/test/unit/main_test.js', {read: false}).pipe(mocha(mochaOptions));
 });
 
-gulp.task('watch', function() {
-  gulp.watch(['./src/*.ts', './test/**/*.ts'], ['compile', 'test.compile', 'unit.test']);
+gulp.task('e2e.test', ['test.compile'], function() {
+  exec('node ./build/test/e2e/small_e2e.js', function(err, stdout, stderr) {
+    if (stdout) console.log(stdout);
+    if (stderr) console.log(stderr);
+  });
 });
 
-gulp.task('default', ['compile', 'unit.test', 'watch']);
+gulp.task('watch', function() {
+  gulp.watch(['./src/*.ts', './test/**/*.ts'], ['compile', 'test.compile', 'unit.test', 'e2e.test']);
+});
+
+gulp.task('default', ['compile', 'unit.test', 'e2e.test', 'watch']);

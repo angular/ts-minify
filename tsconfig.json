@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "module": "commonjs"
+  },
+  "files": [
+    "./typings/chai/chai.d.ts",
+    "./typings/node/node.d.ts",
+    "./typings/fs-extra/fs-extra.d.ts",
+    "./typings/mocha/mocha.d.ts",
+    "./node_modules/typescript/bin/typescript.d.ts",
+    "./build/output/test/input/e2e_input.ts"
+  ]
+}
