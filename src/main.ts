@@ -27,9 +27,8 @@ export class Minifier {
   private lastGeneratedPropName: string = '';
   private typeChecker: ts.TypeChecker;
   private errors: string[] = [];
-  private minifierOptions: MinifierOptions = {};
 
-  constructor(options: MinifierOptions = {}) { this.minifierOptions = options; }
+  constructor(private minifierOptions: MinifierOptions = {}) {}
 
   checkForErrors(program: ts.Program) {
     var errors = [];
@@ -82,18 +81,15 @@ export class Minifier {
 
   getOutputPath(filePath: string, destination?: string): string {
     // convert everything to absolute paths
-    var destination = path.resolve(process.cwd(), destination || '.');
-    var filePath = path.resolve(process.cwd(), filePath);
+    var destination = destination || '.';
 
     // no base path, flatten file structure and output to destination
     if (!this.minifierOptions.basePath) {
       return path.join(destination, path.basename(filePath));
     }
 
-    if (!path.isAbsolute(this.minifierOptions.basePath)) {
-      this.minifierOptions.basePath = path.resolve(process.cwd(), this.minifierOptions.basePath);
-    }
-
+    this.minifierOptions.basePath = path.resolve(process.cwd(), this.minifierOptions.basePath);
+    
     // given a base path, preserve file directory structure
     var subFilePath = filePath.replace(this.minifierOptions.basePath, '');
     return path.join(destination, subFilePath);
