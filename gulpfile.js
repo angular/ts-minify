@@ -43,10 +43,8 @@ gulp.task('unit.test', ['test.compile'], function() {
 });
 
 gulp.task('e2e.test', ['test.compile'], function() {
-  exec('node ./build/test/e2e/small_e2e.js', function(err, stdout, stderr) {
-    if (stdout) console.log(stdout);
-    if (stderr) console.log(stderr);
-  });
+  var e2e = require('./build/test/e2e/small_e2e');
+  e2e.runE2ETests();
 });
 
 gulp.task('watch', function() {

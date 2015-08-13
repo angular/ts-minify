@@ -2,7 +2,7 @@ import {Minifier, options, MinifierOptions} from '../../src/main';
 import * as ts from 'typescript';
 var exec = require('child_process').exec;
 
-function runE2ETests() {
+export function runE2ETests() {
   // base path is set to ts-minfy/
   var minifier = new Minifier({failFast: true, basePath: '../..'});
   minifier.renameProgram(['../input/e2e_input.ts', '../../typings/node/node.d.ts'],
@@ -17,5 +17,3 @@ function runE2ETests() {
   });
   require('../../output/test/input/e2e_input');
 }
-
-runE2ETests();
