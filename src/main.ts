@@ -23,12 +23,12 @@ export class Minifier {
   static reservedJSKeywords = Minifier.buildReservedKeywordsMap();
   // Key: (Eventually fully qualified) original property name
   // Value: new generated property name
-  private renameMap: {[name: string]: string} = {};
-  private lastGeneratedPropName: string = '';
-  private typeChecker: ts.TypeChecker;
-  private errors: string[] = [];
+  private _renameMap: {[name: string]: string} = {};
+  private _lastGeneratedPropName: string = '';
+  private _typeChecker: ts.TypeChecker;
+  private _errors: string[] = [];
 
-  constructor(private minifierOptions: MinifierOptions = {}) {}
+  constructor(private _minifierOptions: MinifierOptions = {}) {}
 
   checkForErrors(program: ts.Program) {
     var errors = [];
@@ -50,7 +50,7 @@ export class Minifier {
     }
   }
 
-  setTypeChecker(typeChecker: ts.TypeChecker) { this.typeChecker = typeChecker; }
+  setTypeChecker(typeChecker: ts.TypeChecker) { this._typeChecker = typeChecker; }
 
   reportError(n: ts.Node, message: string) {
     var file = n.getSourceFile();
@@ -58,8 +58,8 @@ export class Minifier {
     var start = n.getStart(file);
     var pos = file.getLineAndCharacterOfPosition(start);
     var fullMessage = `${fileName}:${pos.line + 1}:${pos.character + 1}: ${message}`;
-    this.errors.push(fullMessage);
-    if (this.minifierOptions.failFast) {
+    this._errors.push(fullMessage);
+    if (this._minifierOptions.failFast) {
       throw new Error(fullMessage);
     }
   }
@@ -67,7 +67,7 @@ export class Minifier {
   renameProgram(fileNames: string[], destination?: string) {
     var host = ts.createCompilerHost(options);
     var program = ts.createProgram(fileNames, options, host);
-    this.typeChecker = program.getTypeChecker();
+    this._typeChecker = program.getTypeChecker();
 
     program.getSourceFiles()
         .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
@@ -81,14 +81,14 @@ export class Minifier {
 
   getOutputPath(filePath: string, destination: string = '.'): string {
     // no base path, flatten file structure and output to destination
-    if (!this.minifierOptions.basePath) {
+    if (!this._minifierOptions.basePath) {
       return path.join(destination, path.basename(filePath));
     }
 
-    this.minifierOptions.basePath = path.resolve(process.cwd(), this.minifierOptions.basePath);
+    this._minifierOptions.basePath = path.resolve(process.cwd(), this._minifierOptions.basePath);
 
     // given a base path, preserve file directory structure
-    var subFilePath = filePath.replace(this.minifierOptions.basePath, '');
+    var subFilePath = filePath.replace(this._minifierOptions.basePath, '');
     return path.join(destination, subFilePath);
   }
 
@@ -98,7 +98,7 @@ export class Minifier {
     switch (node.kind) {
       case ts.SyntaxKind.PropertyAccessExpression: {
         let pae = <ts.PropertyAccessExpression>node;
-        let exprSymbol = this.getExpressionSymbol(pae);
+        let exprSymbol = this._getExpressionSymbol(pae);
         let output = '';
         let children = pae.getChildren();
 
@@ -113,8 +113,8 @@ export class Minifier {
 
         var isExternal = exprSymbol.declarations.some(
             (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal) return output + this.ident(pae.name);
-        return output + this.renameIdent(pae.name);
+        if (isExternal) return output + this._ident(pae.name);
+        return output + this._renameIdent(pae.name);
       }
       // These two have the same wanted behavior.
       case ts.SyntaxKind.PropertyAssignment:
@@ -123,7 +123,7 @@ export class Minifier {
         let output = '';
         for (var child of children) {
           if (child.kind === ts.SyntaxKind.Identifier) {
-            output += this.renameIdent(child);
+            output += this._renameIdent(child);
           } else {
             output += this.visit(child);
           }
@@ -162,25 +162,25 @@ export class Minifier {
     }
   }
 
-  private getExpressionSymbol(node: ts.PropertyAccessExpression) {
-    let exprSymbol = this.typeChecker.getSymbolAtLocation(node.name);
+  private _getExpressionSymbol(node: ts.PropertyAccessExpression) {
+    let exprSymbol = this._typeChecker.getSymbolAtLocation(node.name);
     // Sometimes the RHS expression does not have a symbol, so use the symbol at the property access
     // expression
     if (!exprSymbol) {
-      exprSymbol = this.typeChecker.getSymbolAtLocation(node);
+      exprSymbol = this._typeChecker.getSymbolAtLocation(node);
     }
     return exprSymbol;
   }
 
-  private renameIdent(node: ts.Node) { return this.renameProperty(this.ident(node)); }
+  private _renameIdent(node: ts.Node) { return this.renameProperty(this._ident(node)); }
 
-  private ident(node: ts.Node) { return node.getText(); }
+  private _ident(node: ts.Node) { return node.getText(); }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
   // and ending in 'Z'. If nextChar is passed in 'Z', it will
   // start over from the beginning of the alphabet and return '$'.
-  private nextChar(str: string): string {
+  private _nextChar(str: string): string {
     switch (str) {
       case '$':
         return '_';
@@ -218,15 +218,22 @@ export class Minifier {
   }
 
   renameProperty(name: string): string {
-    if (!this.renameMap.hasOwnProperty(name)) {
-      this.renameMap[name] = this.generateNextPropertyName(this.lastGeneratedPropName);
+    if (!this._renameMap.hasOwnProperty(name)) {
+      this._renameMap[name] = this.generateNextPropertyName(this._lastGeneratedPropName);
     }
-    return this.renameMap[name];
+    return this._renameMap[name];
   }
 
   // Given the last code, returns a string for the new property name.
   // ie: given 'a', will return 'b', given 'az', will return 'aA', etc. ...
+  // public so it is visible for testing
   generateNextPropertyName(code: string): string {
+    var newName = this._generateNextPropertyNameHelper(code);
+    this._lastGeneratedPropName = newName;
+    return newName;
+  }
+
+  private _generateNextPropertyNameHelper(code: string) {
     var chars = code.split('');
     var len: number = code.length;
     var firstChar = '$';
@@ -234,19 +241,17 @@ export class Minifier {
     var firstAlpha = 'a';
 
     if (len === 0) {
-      this.lastGeneratedPropName = firstChar;
       return firstChar;
     }
 
     for (var i = len - 1; i >= 0; i--) {
       if (chars[i] !== lastChar) {
-        chars[i] = this.nextChar(chars[i]);
+        chars[i] = this._nextChar(chars[i]);
         break;
       } else {
         chars[i] = firstChar;
         if (i === 0) {
           let newName = firstChar + (chars.join(''));
-          this.lastGeneratedPropName = newName;
           return newName;
         }
       }
@@ -259,7 +264,6 @@ export class Minifier {
     } else if (chars[0].match(/[0-9]/)) {
       return (firstAlpha + Array(len).join(firstChar));
     } else {
-      this.lastGeneratedPropName = newName;
       return newName;
     }
   }
