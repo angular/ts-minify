@@ -15,5 +15,6 @@ export function runE2ETests() {
       console.log('exec error: ' + error);
     }
   });
+  // execute the renamed and compiled program
   require('../../output/test/input/e2e_input');
 }
