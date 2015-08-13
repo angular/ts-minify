@@ -148,8 +148,10 @@ describe('output paths', () => {
   // │           └── math.ts
   // └── test
   //     └── input
-  it('correctly outputs file with file directory structure', () => {
-    var minifier = new Minifier({basePath: 'test/input'});
-    chai.expect(minifier.getOutputPath('something/test/input/math.ts', 'output')).to.equal('output/something/test/input/math.ts');
-  });
+  it('correctly outputs file with file directory structure when given basePath that appears inside filePath',
+     () => {
+       var minifier = new Minifier({basePath: 'test/input'});
+       chai.expect(minifier.getOutputPath('something/test/input/math.ts', 'output'))
+           .to.equal('output/something/test/input/math.ts');
+     });
 });

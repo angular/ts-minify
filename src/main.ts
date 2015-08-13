@@ -79,17 +79,14 @@ export class Minifier {
         });
   }
 
-  getOutputPath(filePath: string, destination?: string): string {
-    // convert everything to absolute paths
-    var destination = destination || '.';
-
+  getOutputPath(filePath: string, destination: string = '.'): string {
     // no base path, flatten file structure and output to destination
     if (!this.minifierOptions.basePath) {
       return path.join(destination, path.basename(filePath));
     }
 
     this.minifierOptions.basePath = path.resolve(process.cwd(), this.minifierOptions.basePath);
-    
+
     // given a base path, preserve file directory structure
     var subFilePath = filePath.replace(this.minifierOptions.basePath, '');
     return path.join(destination, subFilePath);
