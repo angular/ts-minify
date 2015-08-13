@@ -257,7 +257,9 @@ export class Minifier {
       // Property names cannot start with a number. Generate next possible property name that starts
       // with the first alpha character.
     } else if (chars[0].match(/[0-9]/)) {
-      return (firstAlpha + Array(len).join(firstChar));
+      newName = firstAlpha + Array(len).join(firstChar);
+      this.lastGeneratedPropName = newName;
+      return newName;
     } else {
       this.lastGeneratedPropName = newName;
       return newName;
