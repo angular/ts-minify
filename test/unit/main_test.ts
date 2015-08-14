@@ -123,6 +123,14 @@ describe('Next property name generation', () => {
     assert.equal(minifier.generateNextPropertyName('0a00'), 'a$$$');
     assert.equal(minifier.generateNextPropertyName('a$'), 'a_');
   });
+  it('correctly renames a property based on the last generated property name', () => {
+    var minifier = new Minifier();
+
+    assert.equal(minifier.renameProperty('first'), '$');
+    assert.equal(minifier.renameProperty('second'), '_');
+    assert.equal(minifier.renameProperty('third'), 'a');
+    assert.equal(minifier.renameProperty('fourth'), 'b');
+  });
   it('correctly skips over reserved keywords', () => {
     var minifier = new Minifier();
     // skips generating 'in', which is a reserved word
