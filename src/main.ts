@@ -98,7 +98,7 @@ export class Minifier {
     switch (node.kind) {
       case ts.SyntaxKind.PropertyAccessExpression: {
         let pae = <ts.PropertyAccessExpression>node;
-        let exprSymbol = this.getExpressionSymbol(pae);
+        let exprSymbol = this._getExpressionSymbol(pae);
         let output = '';
         let children = pae.getChildren();
 
@@ -113,8 +113,8 @@ export class Minifier {
 
         var isExternal = exprSymbol.declarations.some(
             (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal) return output + this.ident(pae.name);
-        return output + this.renameIdent(pae.name);
+        if (isExternal) return output + this._ident(pae.name);
+        return output + this._renameIdent(pae.name);
       }
       // These two have the same wanted behavior.
       case ts.SyntaxKind.PropertyAssignment:
@@ -123,7 +123,7 @@ export class Minifier {
         let output = '';
         for (var child of children) {
           if (child.kind === ts.SyntaxKind.Identifier) {
-            output += this.renameIdent(child);
+            output += this._renameIdent(child);
           } else {
             output += this.visit(child);
           }
@@ -162,7 +162,7 @@ export class Minifier {
     }
   }
 
-  private getExpressionSymbol(node: ts.PropertyAccessExpression) {
+  private _getExpressionSymbol(node: ts.PropertyAccessExpression) {
     let exprSymbol = this._typeChecker.getSymbolAtLocation(node.name);
     // Sometimes the RHS expression does not have a symbol, so use the symbol at the property access
     // expression
@@ -172,15 +172,15 @@ export class Minifier {
     return exprSymbol;
   }
 
-  private renameIdent(node: ts.Node) { return this.renameProperty(this.ident(node)); }
+  private _renameIdent(node: ts.Node) { return this.renameProperty(this._ident(node)); }
 
-  private ident(node: ts.Node) { return node.getText(); }
+  private _ident(node: ts.Node) { return node.getText(); }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
   // and ending in 'Z'. If nextChar is passed in 'Z', it will
   // start over from the beginning of the alphabet and return '$'.
-  private nextChar(str: string): string {
+  private _nextChar(str: string): string {
     switch (str) {
       case '$':
         return '_';
@@ -246,7 +246,7 @@ export class Minifier {
 
     for (var i = len - 1; i >= 0; i--) {
       if (chars[i] !== lastChar) {
-        chars[i] = this.nextChar(chars[i]);
+        chars[i] = this._nextChar(chars[i]);
         break;
       } else {
         chars[i] = firstChar;
