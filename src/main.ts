@@ -80,6 +80,9 @@ export class Minifier {
   }
 
   getOutputPath(filePath: string, destination: string = '.'): string {
+    destination = path.resolve(process.cwd(), destination);
+    var absFilePath = path.resolve(process.cwd(), filePath);
+
     // no base path, flatten file structure and output to destination
     if (!this._minifierOptions.basePath) {
       return path.join(destination, path.basename(filePath));
@@ -88,7 +91,12 @@ export class Minifier {
     this._minifierOptions.basePath = path.resolve(process.cwd(), this._minifierOptions.basePath);
 
     // given a base path, preserve file directory structure
-    var subFilePath = filePath.replace(this._minifierOptions.basePath, '');
+    var subFilePath = absFilePath.replace(this._minifierOptions.basePath, '');
+
+    if (subFilePath === absFilePath) {
+      return path.join(destination, filePath);
+    }
+
     return path.join(destination, subFilePath);
   }
 
@@ -105,6 +113,10 @@ export class Minifier {
         output += this.visit(pae.expression);
         output += pae.dotToken.getText();
 
+        // if LHS is a module, do not rename property name
+        var lhsTypeSymbol = this._typeChecker.getTypeAtLocation(pae.expression).symbol;
+        var lhsIsModule = lhsTypeSymbol && ts.SymbolFlags.ValueModule === lhsTypeSymbol.flags;
+
         // Early exit when exprSymbol is undefined.
         if (!exprSymbol) {
           this.reportError(pae.name, 'Symbol information could not be extracted.\n');
@@ -113,7 +125,7 @@ export class Minifier {
 
         var isExternal = exprSymbol.declarations.some(
             (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal) return output + this._ident(pae.name);
+        if (isExternal || lhsIsModule) return output + this._ident(pae.name);
         return output + this._renameIdent(pae.name);
       }
       // These two have the same wanted behavior.

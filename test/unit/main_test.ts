@@ -146,7 +146,7 @@ describe('output paths', () => {
   it('correctly outputs file with file directory structure when given a base path', () => {
     var minifier = new Minifier({basePath: '/a'});
     chai.expect(minifier.getOutputPath('/a/b/c/d.ts', '/x')).to.equal('/x/b/c/d.ts');
-    chai.expect(minifier.getOutputPath('/a/b/c/d.ts')).to.equal('b/c/d.ts');
+    chai.expect(minifier.getOutputPath('/a/b/c/d.ts')).to.equal(process.cwd() + '/b/c/d.ts');
   });
   // .
   // ├── output
@@ -160,6 +160,6 @@ describe('output paths', () => {
      () => {
        var minifier = new Minifier({basePath: 'test/input'});
        chai.expect(minifier.getOutputPath('something/test/input/math.ts', 'output'))
-           .to.equal('output/something/test/input/math.ts');
+           .to.equal(process.cwd() + '/output/something/test/input/math.ts');
      });
 });
