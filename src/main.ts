@@ -226,7 +226,14 @@ export class Minifier {
 
   // Given the last code, returns a string for the new property name.
   // ie: given 'a', will return 'b', given 'az', will return 'aA', etc. ...
+  // public so it is visible for testing
   generateNextPropertyName(code: string): string {
+    var newName = this.generateNextPropertyNameHelper(code);
+    this.lastGeneratedPropName = newName;
+    return newName;
+  }
+
+  private generateNextPropertyNameHelper(code: string) {
     var chars = code.split('');
     var len: number = code.length;
     var firstChar = '$';
@@ -234,7 +241,6 @@ export class Minifier {
     var firstAlpha = 'a';
 
     if (len === 0) {
-      this.lastGeneratedPropName = firstChar;
       return firstChar;
     }
 
@@ -246,7 +252,6 @@ export class Minifier {
         chars[i] = firstChar;
         if (i === 0) {
           let newName = firstChar + (chars.join(''));
-          this.lastGeneratedPropName = newName;
           return newName;
         }
       }
@@ -257,11 +262,8 @@ export class Minifier {
       // Property names cannot start with a number. Generate next possible property name that starts
       // with the first alpha character.
     } else if (chars[0].match(/[0-9]/)) {
-      newName = firstAlpha + Array(len).join(firstChar);
-      this.lastGeneratedPropName = newName;
-      return newName;
+      return (firstAlpha + Array(len).join(firstChar));
     } else {
-      this.lastGeneratedPropName = newName;
       return newName;
     }
   }
