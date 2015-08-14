@@ -105,6 +105,13 @@ export class Minifier {
         output += this.visit(pae.expression);
         output += pae.dotToken.getText();
 
+        // if LHS is a module, do not rename property name
+        var lhsIsModule = false;
+        var lhsTypeSymbol = this._typeChecker.getTypeAtLocation(pae.expression).symbol;
+        if (lhsTypeSymbol) {
+          lhsIsModule = ts.SymbolFlags.ValueModule === lhsTypeSymbol.flags;
+        }
+
         // Early exit when exprSymbol is undefined.
         if (!exprSymbol) {
           this.reportError(pae.name, 'Symbol information could not be extracted.\n');
@@ -113,7 +120,7 @@ export class Minifier {
 
         var isExternal = exprSymbol.declarations.some(
             (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal) return output + this._ident(pae.name);
+        if (isExternal || lhsIsModule) return output + this._ident(pae.name);
         return output + this._renameIdent(pae.name);
       }
       // These two have the same wanted behavior.
