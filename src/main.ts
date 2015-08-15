@@ -80,6 +80,9 @@ export class Minifier {
   }
 
   getOutputPath(filePath: string, destination: string = '.'): string {
+    destination = path.resolve(process.cwd(), destination);
+    filePath = path.resolve(process.cwd(), filePath);
+
     // no base path, flatten file structure and output to destination
     if (!this._minifierOptions.basePath) {
       return path.join(destination, path.basename(filePath));
@@ -87,8 +90,19 @@ export class Minifier {
 
     this._minifierOptions.basePath = path.resolve(process.cwd(), this._minifierOptions.basePath);
 
+    // console.log('destination ' + destination);
+    // console.log('filePath ' + filePath);
+    // console.log('basePath ' + this._minifierOptions.basePath);
+
     // given a base path, preserve file directory structure
     var subFilePath = filePath.replace(this._minifierOptions.basePath, '');
+    // console.log('subFilePath ' + subFilePath);
+
+    if (subFilePath === filePath) {
+      filePath = path.relative(process.cwd(), filePath);
+      return path.join(destination, filePath);
+    }
+
     return path.join(destination, subFilePath);
   }
 
