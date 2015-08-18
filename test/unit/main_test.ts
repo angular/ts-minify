@@ -79,7 +79,7 @@ describe('Recognizes invalid TypeScript inputs', () => {
 describe('Visitor pattern', () => {
   it('renames identifiers of property declarations and property access expressions', () => {
     expectTranslate('class Foo { bar:string; constructor() {} baz() { this.bar = "hello"; } }')
-        .to.equal('class Foo { $:string; constructor() {} baz() { this.$ = "hello"; } }');
+        .to.equal('class Foo { $:string; constructor() {} _(){ this.$ = "hello"; } }');
     expectTranslate('var foo = { bar: { baz: 12; } }; foo.bar.baz;')
         .to.equal('var foo = { $:{ _:12; } }; foo.$._;');
     expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')

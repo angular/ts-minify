@@ -128,7 +128,8 @@ export class Minifier {
         if (isExternal || lhsIsModule) return output + this._ident(pae.name);
         return output + this._renameIdent(pae.name);
       }
-      // These two have the same wanted behavior.
+      // All have same wanted behavior.
+      case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.PropertyAssignment:
       case ts.SyntaxKind.PropertyDeclaration: {
         let children = node.getChildren();
