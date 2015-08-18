@@ -266,6 +266,12 @@ export class Minifier {
     return newName;
   }
 
+  printRenameMap() {
+    for (var i in this._renameMap) {
+      console.log(`{ ${i}: ${this._renameMap[i]} }`);
+    }
+  }
+
   private _generateNextPropertyNameHelper(code: string) {
     var chars = code.split('');
     var len: number = code.length;
