@@ -114,11 +114,8 @@ export class Minifier {
         output += pae.dotToken.getText();
 
         // if LHS is a module, do not rename property name
-        var lhsIsModule = false;
         var lhsTypeSymbol = this._typeChecker.getTypeAtLocation(pae.expression).symbol;
-        if (lhsTypeSymbol) {
-          lhsIsModule = ts.SymbolFlags.ValueModule === lhsTypeSymbol.flags;
-        }
+        var lhsIsModule = lhsTypeSymbol && ts.SymbolFlags.ValueModule === lhsTypeSymbol.flags;
 
         // Early exit when exprSymbol is undefined.
         if (!exprSymbol) {
