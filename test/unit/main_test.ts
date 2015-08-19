@@ -79,13 +79,17 @@ describe('Recognizes invalid TypeScript inputs', () => {
 describe('Visitor pattern', () => {
   it('renames identifiers of property declarations/assignments', () => {
     expectTranslate('var foo = { bar: { baz: 12; } }; foo.bar.baz;')
-        .to.equal('var foo = { $:{ _:12; } }; foo.$._;');
+      .to.equal('var foo = { $: { _: 12; } }; foo.$._;');
     expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')
-        .to.equal('class Foo {$:string;} class Baz {$:string;}');
+      .to.equal('class Foo {$: string;} class Baz {$: string;}');
   });
   it('renames identifiers of property access expressions', () => {
-    expectTranslate('class Foo { bar:string; constructor() {} baz() { this.bar = "hello"; } }')
-        .to.equal('class Foo { $:string; constructor() {} _(){ this.$ = "hello"; } }');
+    expectTranslate('class Foo { bar: string; constructor() {} baz() { this.bar = "hello"; } }')
+      .to.equal('class Foo { $: string; constructor() {} _() { this.$ = "hello"; } }');
+  });
+  it('preserves spacing of original code', () => {
+    expectTranslate('class Foo { constructor(public bar: string) {} }').to.equal('class Foo { constructor(public bar: string) {} }');
+    expectTranslate('class Foo { constructor() {} private bar() {} }').to.equal('class Foo { constructor() {} private $() {} }');
   });
   it('throws an error when symbol information cannot be extracted from a property access expression',
      () => {
