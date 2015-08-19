@@ -129,12 +129,8 @@ export class Minifier {
         return output + this._renameIdent(pae.name);
       }
       // All have same wanted behavior.
-      case ts.SyntaxKind.MethodDeclaration: {
-        return this.contextEmit(node, true);
-      }
-      case ts.SyntaxKind.PropertyAssignment: {
-        return this.contextEmit(node, true);
-      }
+      case ts.SyntaxKind.MethodDeclaration:
+      case ts.SyntaxKind.PropertyAssignment:
       case ts.SyntaxKind.PropertyDeclaration: {
         return this.contextEmit(node, true);
       }
@@ -144,7 +140,7 @@ export class Minifier {
     }
   }
 
-  // if renameIdent is true, rename any identifier in this node
+  // if renameIdent is true, rename children identifiers in this node
   private contextEmit(node: ts.Node, renameIdent: boolean = false) {
     // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
     // positions of nodeText that .getStart() and .getEnd() return are relative to
