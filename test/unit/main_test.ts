@@ -88,7 +88,9 @@ describe('Visitor pattern', () => {
       .to.equal('class Foo { $: string; constructor() {} _() { this.$ = "hello"; } }');
   });
   it('preserves spacing of original code', () => {
-    expectTranslate('class Foo { constructor(public bar: string) {} }').to.equal('class Foo { constructor(public bar: string) {} }');
+    expectTranslate('class Foo { constructor(public bar: string) {} }').to.equal('class Foo { constructor(public $: string) {} }');
+    expectTranslate('class Foo { constructor(private bar: string) {} }').to.equal('class Foo { constructor(private $: string) {} }');
+    expectTranslate('class Foo { constructor(protected bar: string) {} }').to.equal('class Foo { constructor(protected $: string) {} }');
     expectTranslate('class Foo { constructor() {} private bar() {} }').to.equal('class Foo { constructor() {} private $() {} }');
   });
   it('throws an error when symbol information cannot be extracted from a property access expression',

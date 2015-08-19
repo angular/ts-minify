@@ -128,15 +128,29 @@ export class Minifier {
         if (isExternal || lhsIsModule) return output + this._ident(pae.name);
         return output + this._renameIdent(pae.name);
       }
+      // TODO: A parameter property will need to also be renamed in the
+      // constructor body if the parameter is used there.
+      // Look at Issue #39 for an example.
+      case ts.SyntaxKind.Parameter: {
+        var paramDecl = <ts.ParameterDeclaration>node;
+
+        // if there are modifiers, then we know this is a declaration and an initialization at once
+        // we need to rename the property
+        if (this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Public) ||
+            this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Private) ||
+            this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Protected)) {
+          return this.contextEmit(node, true);
+        }
+
+        return this.contextEmit(node);
+      }
       // All have same wanted behavior.
       case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.PropertyAssignment:
       case ts.SyntaxKind.PropertyDeclaration: {
         return this.contextEmit(node, true);
       }
-      default: {
-        return this.contextEmit(node);
-      }
+      default: { return this.contextEmit(node); }
     }
   }
 
@@ -174,6 +188,11 @@ export class Minifier {
     });
     output += nodeText.substring(prevEnd, nodeText.length);
     return output;
+  }
+
+  // n: modifiers array, flag: the flag we are looking for
+  private hasFlag(n: {flags: number}, flag: ts.NodeFlags): boolean {
+    return n && (n.flags & flag) !== 0;
   }
 
   private _getExpressionSymbol(node: ts.PropertyAccessExpression) {
