@@ -129,50 +129,55 @@ export class Minifier {
         return output + this._renameIdent(pae.name);
       }
       // All have same wanted behavior.
-      case ts.SyntaxKind.MethodDeclaration:
-      case ts.SyntaxKind.PropertyAssignment:
+      case ts.SyntaxKind.MethodDeclaration: {
+        return this.contextEmit(node, true);
+      }
+      case ts.SyntaxKind.PropertyAssignment: {
+        return this.contextEmit(node, true);
+      }
       case ts.SyntaxKind.PropertyDeclaration: {
-        let children = node.getChildren();
-        let output = '';
-        for (var child of children) {
-          if (child.kind === ts.SyntaxKind.Identifier) {
-            output += this._renameIdent(child);
-          } else {
-            output += this.visit(child);
-          }
-        }
-        return output;
+        return this.contextEmit(node, true);
       }
       default: {
-        // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
-        // positions of nodeText that .getStart() and .getEnd() return are relative to
-        // the entire sourcefile.
-        let nodeText = node.getText();
-        let children = node.getChildren();
-        let output = '';
-        // prevEnd is used to keep track of how much of nodeText has been copied over. It is updated
-        // within the for loop below, and text from nodeText(0, prevEnd), including children text
-        // that fall within the range, has already been copied over to output.
-        let prevEnd = 0;
-        // Loop-invariant: prevEnd should always be less than or equal to the start position of
-        // an unvisited child node because the text before a child's text must be copied over to
-        // the new output before anything else.
-        children.forEach((child) => {
-          // The start and end positions of the child's text must be updated so that they
-          // are relative to the indicies of the parent's text range (0 ... nodeText.length - 1), by
-          // off-setting by the value of the parent's start position. Now childStart and childEnd
-          // are relative to the range of (0 ... nodeText.length).
-          let childStart = child.getStart() - node.getStart();
-          let childEnd = child.getEnd() - node.getStart();
-          output += nodeText.substring(prevEnd, childStart);
-          let childText = this.visit(child);
-          output += childText;
-          prevEnd = childEnd;
-        });
-        output += nodeText.substring(prevEnd, nodeText.length);
-        return output;
+        return this.contextEmit(node);
       }
     }
+  }
+
+  // if renameIdent is true, rename any identifier in this node
+  private contextEmit(node: ts.Node, renameIdent: boolean = false) {
+    // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
+    // positions of nodeText that .getStart() and .getEnd() return are relative to
+    // the entire sourcefile.
+    let nodeText = node.getText();
+    let children = node.getChildren();
+    let output = '';
+    // prevEnd is used to keep track of how much of nodeText has been copied over. It is updated
+    // within the for loop below, and text from nodeText(0, prevEnd), including children text
+    // that fall within the range, has already been copied over to output.
+    let prevEnd = 0;
+    // Loop-invariant: prevEnd should always be less than or equal to the start position of
+    // an unvisited child node because the text before a child's text must be copied over to
+    // the new output before anything else.
+    children.forEach((child) => {
+      // The start and end positions of the child's text must be updated so that they
+      // are relative to the indicies of the parent's text range (0 ... nodeText.length - 1), by
+      // off-setting by the value of the parent's start position. Now childStart and childEnd
+      // are relative to the range of (0 ... nodeText.length).
+      let childStart = child.getStart() - node.getStart();
+      let childEnd = child.getEnd() - node.getStart();
+      output += nodeText.substring(prevEnd, childStart);
+      let childText = '';
+      if (renameIdent && child.kind === ts.SyntaxKind.Identifier) {
+        childText = this._renameIdent(child);
+      } else {
+        childText = this.visit(child);
+      }
+      output += childText;
+      prevEnd = childEnd;
+    });
+    output += nodeText.substring(prevEnd, nodeText.length);
+    return output;
   }
 
   private _getExpressionSymbol(node: ts.PropertyAccessExpression) {
