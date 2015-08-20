@@ -128,6 +128,9 @@ export class Minifier {
         if (isExternal || lhsIsModule) return output + this._ident(pae.name);
         return output + this._renameIdent(pae.name);
       }
+      // TODO: A parameter property will need to also be renamed in the
+      // constructor body if the parameter is used there.
+      // Look at Issue #39 for an example.
       case ts.SyntaxKind.Parameter: {
         var paramDecl = <ts.ParameterDeclaration>node;
 
@@ -191,7 +194,7 @@ export class Minifier {
 
   // n: modifiers array, flag: the flag we are looking for
   private hasFlag(n: { flags: number }, flag: ts.NodeFlags): boolean {
-    return n && (n.flags & flag) !== 0 || false;
+    return n && (n.flags & flag) !== 0;
   }
 
   private _getExpressionSymbol(node: ts.PropertyAccessExpression) {
