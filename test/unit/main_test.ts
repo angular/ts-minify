@@ -80,6 +80,8 @@ describe('Visitor pattern', () => {
   it('renames identifiers of property declarations/assignments', () => {
     expectTranslate('var foo = { bar: { baz: 12; } }; foo.bar.baz;')
       .to.equal('var foo = { $: { _: 12; } }; foo.$._;');
+    expectTranslate('var x = "something"; var foo = { bar: { baz: x; } }; foo.bar.baz;')
+      .to.equal('var x = "something"; var foo = { $: { _: x; } }; foo.$._;');
     expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')
       .to.equal('class Foo {$: string;} class Baz {$: string;}');
   });
