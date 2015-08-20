@@ -34,7 +34,7 @@ gulp.task('compile', function() {
 });
 
 gulp.task('test.compile', ['compile'], function(done) {
-  return gulp.src(['test/**/*.ts'], {base: '.'}).pipe(tsc(tsProject)).pipe(gulp.dest('build/'));
+  return gulp.src(['test/**/*.ts', '!test/input/ts2dart/', '!test/input/ts2dart/**/'], {base: '.'}).pipe(tsc(tsProject)).pipe(gulp.dest('build/'));
 });
 
 gulp.task('unit.test', ['test.compile'], function() {
