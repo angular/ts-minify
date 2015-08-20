@@ -178,7 +178,8 @@ export class Minifier {
       let childEnd = child.getEnd() - node.getStart();
       output += nodeText.substring(prevEnd, childStart);
       let childText = '';
-      if (renameIdent && child.kind === ts.SyntaxKind.Identifier) {
+      let hasName = (<any>node).name;
+      if (renameIdent && child.kind === ts.SyntaxKind.Identifier && hasName === child) {
         childText = this._renameIdent(child);
       } else {
         childText = this.visit(child);
