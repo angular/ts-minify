@@ -137,8 +137,8 @@ export class Minifier {
         // if there are modifiers, then we know this is a declaration and an initialization at once
         // we need to rename the property
         if (this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Public) ||
-          this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Private) ||
-          this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Protected)) {
+            this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Private) ||
+            this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Protected)) {
           return this.contextEmit(node, true);
         }
 
@@ -150,9 +150,7 @@ export class Minifier {
       case ts.SyntaxKind.PropertyDeclaration: {
         return this.contextEmit(node, true);
       }
-      default: {
-        return this.contextEmit(node);
-      }
+      default: { return this.contextEmit(node); }
     }
   }
 
@@ -193,7 +191,7 @@ export class Minifier {
   }
 
   // n: modifiers array, flag: the flag we are looking for
-  private hasFlag(n: { flags: number }, flag: ts.NodeFlags): boolean {
+  private hasFlag(n: {flags: number}, flag: ts.NodeFlags): boolean {
     return n && (n.flags & flag) !== 0;
   }
 
