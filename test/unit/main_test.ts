@@ -93,6 +93,10 @@ describe('Visitor pattern', () => {
     expectTranslate('interface LabelledValue { label: string; }')
         .to.equal('interface LabelledValue { $: string; }');
   });
+  it('renames properties on type literals', () => {
+    expectTranslate('function x(): { foo: string, bar: string } { return { foo: "foo", bar: "bar" }; }')
+      .to.equal('function x(): { $: string, _: string } { return { $: "foo", _: "bar" }; }');
+  });
   it('preserves spacing of original code', () => {
     expectTranslate('class Foo { constructor(public bar: string) {} }')
         .to.equal('class Foo { constructor(public $: string) {} }');
