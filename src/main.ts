@@ -1,5 +1,6 @@
 /// <reference path ='../node_modules/typescript/bin/typescript.d.ts' />
 /// <reference path='../typings/fs-extra/fs-extra.d.ts' />
+/// <reference path='../node_modules/typescript/bin/lib.es6.d.ts' />
 
 import * as ts from 'typescript';
 import * as path from 'path';
@@ -11,7 +12,7 @@ const DEBUG = false;
 export const options: ts.CompilerOptions = {
   allowNonTsExtensions: true,
   module: ts.ModuleKind.CommonJS,
-  target: ts.ScriptTarget.ES5,
+  target: ts.ScriptTarget.ES6,
 };
 
 export interface MinifierOptions {
@@ -24,6 +25,7 @@ export class Minifier {
   // Key: (Eventually fully qualified) original property name
   // Value: new generated property name
   private _renameMap: {[name: string]: string} = {};
+  private _typeCasting: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
   private _lastGeneratedPropName: string = '';
   private _typeChecker: ts.TypeChecker;
   private _errors: string[] = [];
@@ -69,10 +71,20 @@ export class Minifier {
     var program = ts.createProgram(fileNames, options, host);
     this._typeChecker = program.getTypeChecker();
 
-    program.getSourceFiles()
-        .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
-        .forEach((f) => {
+    let files = program.getSourceFiles().filter((sf) => !sf.fileName.match(/\.d\.ts$/));
+
+    files.forEach((f) => {
+      this.preprocessVisit(f);
+    });
+
+    // this._typeCasting.forEach((val, key) => {
+    //   console.log('key ' + key.getName());
+    //   console.log(this.isRenameable(key));
+    // });
+
+    files.forEach((f) => {
           var renamedTSCode = this.visit(f);
+          console.log(renamedTSCode);
           var fileName = this.getOutputPath(f.fileName, destination);
           fsx.mkdirsSync(path.dirname(fileName));
           fs.writeFileSync(fileName, renamedTSCode);
@@ -100,6 +112,96 @@ export class Minifier {
     return path.join(destination, subFilePath);
   }
 
+  isExternal(symbol: ts.Symbol): boolean {
+    // figure out how to deal with undefined symbols (ie: in case of string literal)
+    if (!symbol) return true;
+
+    // if no declarations, assume primitive
+    return symbol.declarations.some(
+      (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
+  }  
+
+  isRenameable(symbol: ts.Symbol): boolean {
+    // console.log('=============================');
+    // console.log(symbol.members);
+    // console.log('=============================');
+    // console.log(this._typeCasting.get(symbol));
+
+    if (this.isExternal(symbol)) return false;
+    if (!this._typeCasting.has(symbol)) return true;
+
+    let renameable = false;
+    this._typeCasting.get(symbol).forEach((castType) => {
+      console.log(this.isExternal(castType));
+      if (!this.isExternal(castType)) {
+        renameable = true;
+      }
+    });
+
+    return renameable;   
+
+    // do check for intermediate case, where we throw an error if we have both trues and falses
+    return false;
+  }  
+
+  // all preprocess before we start emitting
+  preprocessVisit(node: ts.Node) {
+    switch(node.kind) {
+      case ts.SyntaxKind.CallExpression: {
+        // expression, typedArguments?, arguments
+        var callExpr = <ts.CallExpression>node;
+        // console.log(this._typeChecker.getSymbolAtLocation(callExpr.expression));
+        var lhsSymbol = this._typeChecker.getSymbolAtLocation(callExpr.expression);
+
+        let paramSymbols: ts.Symbol[] = [];
+
+        // this has expected infomration
+        // TODO: understand cases of multiple declarations, pick
+        // first declaration for now
+        if (!lhsSymbol || !((<any>lhsSymbol.declarations[0]).parameters)) {
+          node.getChildren().forEach((child) => {
+            this.preprocessVisit(child);
+          });
+        } else {
+          (<any>lhsSymbol.declarations[0]).parameters.forEach((param) => {
+            console.log('=======================');
+            paramSymbols.push(param.type.symbol);
+            //console.log(param.getText());
+            //console.log(this.isExternal(param.type.symbol));
+            //this._typeCasting.set(param.type.symbol, []);
+            //console.log(this._typeCasting.get(param.type.symbol));
+          });
+
+        let argsSymbols: ts.Symbol[] = [];
+
+        // right hand side argument has actual type of parameter
+        console.log('Right hand side');
+        callExpr.arguments.forEach((arg) => {
+          argsSymbols.push(this._typeChecker.getTypeAtLocation(arg).symbol);
+        });
+
+        paramSymbols.forEach((sym, i) => {
+          if (this._typeCasting.has(sym)) {
+            this._typeCasting.get(sym).push(argsSymbols[i]);
+          } else {
+            this._typeCasting.set(sym, [argsSymbols[i]]);
+          }
+        });
+
+        node.getChildren().forEach((child) => {
+          this.preprocessVisit(child);
+        });
+        }
+        
+      }
+      default: {
+        node.getChildren().forEach((child) => {
+          this.preprocessVisit(child);
+        });
+      }
+    }
+  }
+
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
   // a child node.
   visit(node: ts.Node): string {
@@ -125,8 +227,11 @@ export class Minifier {
 
         var isExternal = exprSymbol.declarations.some(
             (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal || lhsIsModule) return output + this._ident(pae.name);
-        return output + this._renameIdent(pae.name);
+
+        // console.log(lhsTypeSymbol.getName(), this.isRenameable(exprSymbol));
+
+        if (!this.isRenameable(lhsTypeSymbol) || isExternal || lhsIsModule) return output + this._ident(pae.name);
+        return output + this._renameIdent(pae.name); 
       }
       // TODO: A parameter property will need to also be renamed in the
       // constructor body if the parameter is used there.
@@ -142,6 +247,16 @@ export class Minifier {
           return this.contextEmit(node, true);
         }
 
+        return this.contextEmit(node);
+      }
+      // separate PR
+      // TODO: INTERFACE AND PROPERTY SIGNATURE
+      case ts.SyntaxKind.PropertySignature: {
+        if (node.parent.kind === ts.SyntaxKind.TypeLiteral || node.parent.kind === ts.SyntaxKind.InterfaceDeclaration) {
+          let parentSymbol = this._typeChecker.getTypeAtLocation(node.parent).symbol;
+          let rename = this.isRenameable(parentSymbol);
+          return this.contextEmit(node, rename);
+        }
         return this.contextEmit(node);
       }
       // All have same wanted behavior.
@@ -251,6 +366,7 @@ export class Minifier {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
+  // switch to ES6 maps
   renameProperty(name: string): string {
     if (!this._renameMap.hasOwnProperty(name)) {
       this._renameMap[name] = this.generateNextPropertyName(this._lastGeneratedPropName);
@@ -302,3 +418,6 @@ export class Minifier {
     }
   }
 }
+
+// var minifier = new Minifier();
+// minifier.renameProgram(['../../test/input/structural.ts']);
