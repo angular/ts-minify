@@ -144,6 +144,14 @@ export class Minifier {
 
         return this.contextEmit(node);
       }
+      case ts.SyntaxKind.PropertySignature: {
+        if (node.parent.kind === ts.SyntaxKind.TypeLiteral ||
+            node.parent.kind === ts.SyntaxKind.InterfaceDeclaration) {
+          return this.contextEmit(
+              node, true);  // TODO: incorporate check for assignment to an external type
+        }
+        return this.contextEmit(node);
+      }
       // All have same wanted behavior.
       case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.PropertyAssignment:
