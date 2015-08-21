@@ -144,6 +144,14 @@ export class Minifier {
 
         return this.contextEmit(node);
       }
+      case ts.SyntaxKind.PropertySignature: {
+        if (node.parent.kind === ts.SyntaxKind.TypeLiteral ||
+            node.parent.kind === ts.SyntaxKind.InterfaceDeclaration) {
+          let parentSymbol = this._typeChecker.getTypeAtLocation(node.parent).symbol;
+          return this.contextEmit(node, true);  // renameIdent is true for now
+        }
+        return this.contextEmit(node);
+      }
       // All have same wanted behavior.
       case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.PropertyAssignment:
