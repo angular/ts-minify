@@ -366,7 +366,6 @@ export class Minifier {
     return Minifier.reservedJSKeywords.hasOwnProperty(str);
   }
 
-  // switch to ES6 maps
   renameProperty(name: string): string {
     if (!this._renameMap.hasOwnProperty(name)) {
       this._renameMap[name] = this.generateNextPropertyName(this._lastGeneratedPropName);
