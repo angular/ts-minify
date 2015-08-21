@@ -82,9 +82,10 @@ export class Minifier {
     // visit and rename
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
-      var fileName = this.getOutputPath(f.fileName, destination);
-      fsx.mkdirsSync(path.dirname(fileName));
-      fs.writeFileSync(fileName, renamedTSCode);
+      console.log(renamedTSCode);
+      //var fileName = this.getOutputPath(f.fileName, destination);
+      //fsx.mkdirsSync(path.dirname(fileName));
+      //fs.writeFileSync(fileName, renamedTSCode);
     });
   }
 
@@ -146,20 +147,13 @@ export class Minifier {
     }
 
     // Check that all use sites are internal, if ALL internal, we can early return true, else false
-    for (let bool in boolArr) {
+    for (let bool of boolArr) {
       // if NOT internal, return false
-      if (!bool) return false;
+      if (!bool) { return false; }
     }
 
     // all uses were internal, return true
     return true;
-
-    // this._typeCasting.get(symbol).forEach((castType) => {
-    //   console.log(this.isExternal(castType));
-    //   if (!this.isExternal(castType)) {
-    //     renameable = true;
-    //   }
-    // });
   }
 
   private _preprocessVisitChildren(node: ts.Node) {
@@ -257,6 +251,14 @@ export class Minifier {
 
         return this.contextEmit(node);
       }
+      case ts.SyntaxKind.PropertySignature: {
+        if (node.parent.kind === ts.SyntaxKind.TypeLiteral || node.parent.kind === ts.SyntaxKind.InterfaceDeclaration) {
+          let parentSymbol = this._typeChecker.getTypeAtLocation(node.parent).symbol;
+          let rename = this.isRenameable(parentSymbol);
+          return this.contextEmit(node, rename);
+        }
+        return this.contextEmit(node);
+      }
       // All have same wanted behavior.
       case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.PropertyAssignment:
@@ -291,7 +293,8 @@ export class Minifier {
       let childEnd = child.getEnd() - node.getStart();
       output += nodeText.substring(prevEnd, childStart);
       let childText = '';
-      if (renameIdent && child.kind === ts.SyntaxKind.Identifier) {
+      let hasName = (<any>node).name;
+      if (renameIdent && child.kind === ts.SyntaxKind.Identifier && hasName === child) {
         childText = this._renameIdent(child);
       } else {
         childText = this.visit(child);
@@ -414,3 +417,6 @@ export class Minifier {
     }
   }
 }
+
+var minifier = new Minifier();
+minifier.renameProgram(['../../test/input/structural.ts']);
