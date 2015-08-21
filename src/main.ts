@@ -1,5 +1,6 @@
 /// <reference path ='../node_modules/typescript/bin/typescript.d.ts' />
 /// <reference path='../typings/fs-extra/fs-extra.d.ts' />
+/// <reference path='../node_modules/typescript/bin/lib.es6.d.ts' />
 
 import * as ts from 'typescript';
 import * as path from 'path';
@@ -11,7 +12,7 @@ const DEBUG = false;
 export const options: ts.CompilerOptions = {
   allowNonTsExtensions: true,
   module: ts.ModuleKind.CommonJS,
-  target: ts.ScriptTarget.ES5,
+  target: ts.ScriptTarget.ES6,
 };
 
 export interface MinifierOptions {
@@ -24,6 +25,7 @@ export class Minifier {
   // Key: (Eventually fully qualified) original property name
   // Value: new generated property name
   private _renameMap: {[name: string]: string} = {};
+  private _typeCasting: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
   private _lastGeneratedPropName: string = '';
   private _typeChecker: ts.TypeChecker;
   private _errors: string[] = [];
@@ -64,19 +66,25 @@ export class Minifier {
     }
   }
 
+  // Renaming goes through a pre-processing step and an emitting step.
   renameProgram(fileNames: string[], destination?: string) {
     var host = ts.createCompilerHost(options);
     var program = ts.createProgram(fileNames, options, host);
     this._typeChecker = program.getTypeChecker();
 
-    program.getSourceFiles()
-        .filter((sf) => !sf.fileName.match(/\.d\.ts$/))
-        .forEach((f) => {
-          var renamedTSCode = this.visit(f);
-          var fileName = this.getOutputPath(f.fileName, destination);
-          fsx.mkdirsSync(path.dirname(fileName));
-          fs.writeFileSync(fileName, renamedTSCode);
-        });
+    let sourceFiles = program.getSourceFiles().filter((sf) => !sf.fileName.match(/\.d\.ts$/));
+
+    // preprocess AST
+    // sourceFiles.forEach((f) => {
+    //   this.preprocessVisit(f);
+    // });
+
+    sourceFiles.forEach((f) => {
+      var renamedTSCode = this.visit(f);
+      var fileName = this.getOutputPath(f.fileName, destination);
+      fsx.mkdirsSync(path.dirname(fileName));
+      fs.writeFileSync(fileName, renamedTSCode);
+    });
   }
 
   getOutputPath(filePath: string, destination: string = '.'): string {
@@ -98,6 +106,109 @@ export class Minifier {
     }
 
     return path.join(destination, subFilePath);
+  }
+
+  isExternal(symbol: ts.Symbol): boolean {
+    // figure out how to deal with undefined symbols
+    // (ie: in case of string literal, or something like true.toString())
+    if (!symbol) return true;
+
+    return symbol.declarations.some(
+      (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
+  }
+
+  isRenameable(symbol: ts.Symbol): boolean {
+    // console.log('=============================');
+    // console.log(symbol.members);
+    // console.log('=============================');
+    // console.log(this._typeCasting.get(symbol));
+
+    if (this.isExternal(symbol)) return false;
+    if (!this._typeCasting.has(symbol)) return true;
+
+    let boolArr = [];
+
+    // three cases to consider
+    // CANNOT RENAME: Expected symbol is internal, all actual use site symbols are external
+    // CAN RENAME: Expect symbol is internal, all actual use site symbols are internal
+    // ERROR: Expected symbol is internal, use sites are both internal and external
+
+    // Create boolean array of if the values are true/false when asked
+    // if use site symbols are INTERNAL
+    for (let castType of this._typeCasting.get(symbol)) {
+      boolArr.push(!this.isExternal(castType));
+    }
+
+    // Check if there are both true and false values in boolArr, throw Error
+    if (boolArr.indexOf(true) >= 0 && boolArr.indexOf(false) >= 0) {
+      throw new Error('ts-minify does not support internal and external parameters at call expression sites');
+    }
+
+    // Check that all use sites are internal, if ALL internal, we can early return true, else false
+    for (let bool in boolArr) {
+      // if NOT internal, return false
+      if (!bool) return false;
+    }
+
+    // all uses were internal, return true
+    return true;
+
+    // this._typeCasting.get(symbol).forEach((castType) => {
+    //   console.log(this.isExternal(castType));
+    //   if (!this.isExternal(castType)) {
+    //     renameable = true;
+    //   }
+    // });
+  }
+
+  private _preprocessVisitChildren(node: ts.Node) {
+    node.getChildren().forEach((child) => {
+      this._preprocessVisit(child);
+    });
+  }
+
+  // all preprocess before we start emitting
+  private _preprocessVisit(node: ts.Node) {
+    switch (node.kind) {
+      case ts.SyntaxKind.CallExpression: {
+        var callExpr = <ts.CallExpression>node;
+        var lhsSymbol = this._typeChecker.getSymbolAtLocation(callExpr.expression);
+
+        let paramSymbols: ts.Symbol[] = [];
+
+        // TODO: understand cases of multiple declarations, pick
+        // first declaration for now
+        if (!lhsSymbol || !((<any>lhsSymbol.declarations[0]).parameters)) {
+          this._preprocessVisitChildren(node);
+        } else {
+          (<any>lhsSymbol.declarations[0]).parameters.forEach((param) => {
+            paramSymbols.push(param.type.symbol);
+          });
+
+          let argsSymbols: ts.Symbol[] = [];
+
+          // right hand side argument has actual type of parameter
+          callExpr.arguments.forEach((arg) => {
+            argsSymbols.push(this._typeChecker.getTypeAtLocation(arg).symbol);
+          });
+
+          // Push expected symbol with actual use site symbol
+          paramSymbols.forEach((sym, i) => {
+            if (this._typeCasting.has(sym)) {
+              this._typeCasting.get(sym).push(argsSymbols[i]);
+            } else {
+              this._typeCasting.set(sym, [argsSymbols[i]]);
+            }
+          });
+
+          // visit children
+          this._preprocessVisitChildren(node);
+        }
+      }
+      default: {
+        this._preprocessVisitChildren(node);
+      }
+    }
   }
 
   // Recursively visits every child node, emitting text of the sourcefile that is not a part of
@@ -123,9 +234,10 @@ export class Minifier {
           return;
         }
 
-        var isExternal = exprSymbol.declarations.some(
-            (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
-        if (isExternal || lhsIsModule) return output + this._ident(pae.name);
+        var isExternal = this.isExternal(exprSymbol);
+        if (!this.isRenameable(lhsTypeSymbol) || isExternal || lhsIsModule) {
+          return output + this._ident(pae.name);
+        }
         return output + this._renameIdent(pae.name);
       }
       // TODO: A parameter property will need to also be renamed in the
