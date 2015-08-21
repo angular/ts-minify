@@ -75,10 +75,11 @@ export class Minifier {
     let sourceFiles = program.getSourceFiles().filter((sf) => !sf.fileName.match(/\.d\.ts$/));
 
     // preprocess AST
-    // sourceFiles.forEach((f) => {
-    //   this.preprocessVisit(f);
-    // });
+    sourceFiles.forEach((f) => {
+      this._preprocessVisit(f);
+    });
 
+    // visit and rename
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
       var fileName = this.getOutputPath(f.fileName, destination);
