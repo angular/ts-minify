@@ -26,6 +26,8 @@ export class Minifier {
   // Value: new generated property name
   private _renameMap: {[name: string]: string} = {};
   private _typeCasting: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
+  private _typeReturn: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
+
   private _lastGeneratedPropName: string = '';
   private _typeChecker: ts.TypeChecker;
   private _errors: string[] = [];
@@ -162,8 +164,21 @@ export class Minifier {
     });
   }
 
+  // private visitUntil(node: ts.Node, kind: ts.SyntaxKind) {
+  //   if (!node) return null;
+
+  //   for (let i = 0; i < node.getChildCount(); i++) {
+  //     if (node.getChildAt(i).kind === kind) {
+  //       return node.getChildAt(i);
+  //     } else {
+  //       return this.visitUntil(node.getChildAt(i), kind);
+  //     }
+  //   }
+  // }
+
   // all preprocess before we start emitting
   private _preprocessVisit(node: ts.Node) {
+    // console.log((<any>ts).SyntaxKind[node.kind]);
     switch (node.kind) {
       case ts.SyntaxKind.CallExpression: {
         var callExpr = <ts.CallExpression>node;
@@ -199,6 +214,34 @@ export class Minifier {
           // visit children
           this._preprocessVisitChildren(node);
         }
+      }
+      case ts.SyntaxKind.MethodDeclaration: 
+      case ts.SyntaxKind.FunctionDeclaration: { 
+        //console.log('Function/Method Declaration!');
+        var funcDecl = <ts.FunctionLikeDeclaration>node;
+        // console.log(ts.SyntaxKind[funcDecl.type.kind]);
+
+        var symbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
+        //console.log(symbol.declarations[0].getSourceFile().fileName);
+
+       
+      }
+      case ts.SyntaxKind.ReturnStatement: {
+        if (node.parent.kind !== ts.SyntaxKind.SourceFile) {
+          console.log('return statement');
+          console.log(this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol);
+        
+          let parent = node.parent;
+          while (parent.kind !== ts.SyntaxKind.FunctionDeclaration && parent.kind !== ts.SyntaxKind.MethodDeclaration) {
+            parent = parent.parent;
+          }
+
+          let funcDecl = <ts.FunctionLikeDeclaration>parent;
+          var symbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
+          console.log(symbol.declarations[0].getSourceFile().fileName);
+        }
+
+        // console.log(this._typeChecker.getSymbolAtLocation(node));
       }
       default: {
         this._preprocessVisitChildren(node);
@@ -419,4 +462,5 @@ export class Minifier {
 }
 
 var minifier = new Minifier();
-minifier.renameProgram(['../../test/input/structural.ts']);
+minifier.renameProgram(['../../test/input/external_return.ts']);
+
