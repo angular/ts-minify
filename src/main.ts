@@ -166,6 +166,7 @@ export class Minifier {
     // within the for loop below, and text from nodeText(0, prevEnd), including children text
     // that fall within the range, has already been copied over to output.
     let prevEnd = 0;
+    let nameChildNode = (<any>node).name;
     // Loop-invariant: prevEnd should always be less than or equal to the start position of
     // an unvisited child node because the text before a child's text must be copied over to
     // the new output before anything else.
@@ -178,8 +179,7 @@ export class Minifier {
       let childEnd = child.getEnd() - node.getStart();
       output += nodeText.substring(prevEnd, childStart);
       let childText = '';
-      let hasName = (<any>node).name;
-      if (renameIdent && child.kind === ts.SyntaxKind.Identifier && hasName === child) {
+      if (renameIdent && child === nameChildNode && child.kind === ts.SyntaxKind.Identifier) {
         childText = this._renameIdent(child);
       } else {
         childText = this.visit(child);
