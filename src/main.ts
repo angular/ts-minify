@@ -229,6 +229,8 @@ export class Minifier {
       case ts.SyntaxKind.ReturnStatement: {
         if (node.parent.kind !== ts.SyntaxKind.SourceFile) {
           console.log('return statement');
+
+          // check if there is an expression on the return statement since it's optional
           console.log(this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol);
         
           let parent = node.parent;
@@ -239,6 +241,8 @@ export class Minifier {
           let funcDecl = <ts.FunctionLikeDeclaration>parent;
           var symbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
           console.log(symbol.declarations[0].getSourceFile().fileName);
+
+          // add to dictionary
         }
 
         // console.log(this._typeChecker.getSymbolAtLocation(node));
