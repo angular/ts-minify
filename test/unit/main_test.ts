@@ -131,6 +131,18 @@ describe('Full-text emit', () => {
     expectTranslate('/// <reference path="../../typings/node/node.d.ts"/> var x = "hello";')
         .to.equal('/// <reference path="../../typings/node/node.d.ts"/> var x = "hello";');
   });
+  it('retains comments for a node', () => {
+    expectTranslate(`// This comment should show up
+                        class Foo {
+                          // these should also show up
+                          bar: string;
+                        }`)
+        .to.equal(`// This comment should show up
+                        class Foo {
+                          // these should also show up
+                          $: string;
+                        }`);
+  });
 });
 
 describe('Next property name generation', () => {
