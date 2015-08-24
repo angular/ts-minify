@@ -147,8 +147,8 @@ export class Minifier {
       case ts.SyntaxKind.PropertySignature: {
         if (node.parent.kind === ts.SyntaxKind.TypeLiteral ||
             node.parent.kind === ts.SyntaxKind.InterfaceDeclaration) {
-          let parentSymbol = this._typeChecker.getTypeAtLocation(node.parent).symbol;
-          return this.contextEmit(node, true);  // renameIdent is true for now
+          return this.contextEmit(
+              node, true);  // TODO: incorporate check for assignment to an external type
         }
         return this.contextEmit(node);
       }
