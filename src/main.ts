@@ -111,7 +111,7 @@ export class Minifier {
         let children = pae.getChildren();
 
         output += this.visit(pae.expression);
-        output += pae.dotToken.getText();
+        output += pae.dotToken.getFullText();
 
         // if LHS is a module, do not rename property name
         var lhsTypeSymbol = this._typeChecker.getTypeAtLocation(pae.expression).symbol;
@@ -167,7 +167,7 @@ export class Minifier {
     // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
     // positions of nodeText that .getStart() and .getEnd() return are relative to
     // the entire sourcefile.
-    let nodeText = node.getText();
+    let nodeText = node.getFullText();
     let children = node.getChildren();
     let output = '';
     // prevEnd is used to keep track of how much of nodeText has been copied over. It is updated
@@ -183,8 +183,8 @@ export class Minifier {
       // are relative to the indicies of the parent's text range (0 ... nodeText.length - 1), by
       // off-setting by the value of the parent's start position. Now childStart and childEnd
       // are relative to the range of (0 ... nodeText.length).
-      let childStart = child.getStart() - node.getStart();
-      let childEnd = child.getEnd() - node.getStart();
+      let childStart = child.getFullStart() - node.getFullStart();
+      let childEnd = child.getEnd() - node.getFullStart();
       output += nodeText.substring(prevEnd, childStart);
       let childText = '';
       if (renameIdent && child === nameChildNode && child.kind === ts.SyntaxKind.Identifier) {
@@ -214,9 +214,16 @@ export class Minifier {
     return exprSymbol;
   }
 
-  private _renameIdent(node: ts.Node) { return this.renameProperty(this._ident(node)); }
+  // rename the identifier, but retain comments/spacing since we are using getFullText();
+  private _renameIdent(node: ts.Node) {
+    let fullText = node.getFullText();
+    let fullStart = node.getFullStart();
+    let regStart = node.getStart() - fullStart;
+    let preIdent = fullText.substring(0, regStart);
+    return preIdent + this.renameProperty(node.getText());
+  }
 
-  private _ident(node: ts.Node) { return node.getText(); }
+  private _ident(node: ts.Node) { return node.getFullText(); }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
