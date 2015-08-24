@@ -79,11 +79,11 @@ describe('Recognizes invalid TypeScript inputs', () => {
 describe('Visitor pattern', () => {
   it('renames identifiers of property declarations/assignments', () => {
     expectTranslate('var foo = { bar: { baz: 12; } }; foo.bar.baz;')
-      .to.equal('var foo = { $: { _: 12; } }; foo.$._;');
+        .to.equal('var foo = { $: { _: 12; } }; foo.$._;');
     expectTranslate('var x = "something"; var foo = { bar: { baz: x; } }; foo.bar.baz;')
-      .to.equal('var x = "something"; var foo = { $: { _: x; } }; foo.$._;');
+        .to.equal('var x = "something"; var foo = { $: { _: x; } }; foo.$._;');
     expectTranslate('class Foo {bar: string;} class Baz {bar: string;}')
-      .to.equal('class Foo {$: string;} class Baz {$: string;}');
+        .to.equal('class Foo {$: string;} class Baz {$: string;}');
   });
   it('renames identifiers of property access expressions', () => {
     expectTranslate('class Foo { bar: string; constructor() {} baz() { this.bar = "hello"; } }')
@@ -123,6 +123,13 @@ describe('Selective renaming', () => {
     expectTranslate('document.getElementById("foo");').to.equal('document.getElementById("foo");');
     expectTranslate('[1, 4, 9].map(Math.sqrt);').to.equal('[1, 4, 9].map(Math.sqrt);');
     expectTranslate('"hello".substring(0, 2);').to.equal('"hello".substring(0, 2);');
+  });
+});
+
+describe('Full-text emit', () => {
+  it('retains typings at the top of file', () => {
+    expectTranslate('/// <reference path="../../typings/node/node.d.ts"/> var x = "hello";')
+        .to.equal('/// <reference path="../../typings/node/node.d.ts"/> var x = "hello";');
   });
 });
 
