@@ -81,13 +81,33 @@ export class Minifier {
       this._preprocessVisit(f);
     });
 
+    // reverse the typeCasting map  
+    this.reverseTypeCastMap();
+
+    // this._typeReturn.forEach((valueArr, key) => {
+    //   console.log(key);
+    //   console.log(valueArr);
+    // });
+
     // visit and rename
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
-      console.log(renamedTSCode);
-      //var fileName = this.getOutputPath(f.fileName, destination);
-      //fsx.mkdirsSync(path.dirname(fileName));
-      //fs.writeFileSync(fileName, renamedTSCode);
+      // console.log(renamedTSCode);
+      var fileName = this.getOutputPath(f.fileName, destination);
+      fsx.mkdirsSync(path.dirname(fileName));
+      fs.writeFileSync(fileName, renamedTSCode);
+    });
+  }
+
+  reverseTypeCastMap() {
+    this._typeCasting.forEach((valueArr, key) => {
+      valueArr.forEach((value) => {
+        if (this._typeReturn.has(value)) {
+          this._typeReturn.get(value).push(key);
+        } else {
+          this._typeReturn.set(value, [key]);
+        }
+      });
     });
   }
 
@@ -108,7 +128,6 @@ export class Minifier {
     if (subFilePath === absFilePath) {
       return path.join(destination, filePath);
     }
-
     return path.join(destination, subFilePath);
   }
 
@@ -128,9 +147,12 @@ export class Minifier {
     // console.log(this._typeCasting.get(symbol));
 
     if (this.isExternal(symbol)) return false;
-    if (!this._typeCasting.has(symbol)) return true;
+    if (!this._typeCasting.has(symbol) && !this._typeReturn.has(symbol)) return true;
 
-    let boolArr = [];
+    let boolArrTypeCasting = [];
+    let boolArrReturnType = [];
+
+    let renameable = true;
 
     // three cases to consider
     // CANNOT RENAME: Expected symbol is internal, all actual use site symbols are external
@@ -139,23 +161,42 @@ export class Minifier {
 
     // Create boolean array of if the values are true/false when asked
     // if use site symbols are INTERNAL
-    for (let castType of this._typeCasting.get(symbol)) {
-      boolArr.push(!this.isExternal(castType));
+    if (this._typeCasting.has(symbol)) {
+      for (let castType of this._typeCasting.get(symbol)) {
+        boolArrTypeCasting.push(!this.isExternal(castType));
+      }
+
+      // Check if there are both true and false values in boolArrTypeCasting, throw Error
+      if (boolArrTypeCasting.indexOf(true) >= 0 && boolArrTypeCasting.indexOf(false) >= 0) {
+        throw new Error('ts-minify does not support internal and external parameters at call expression sites');
+      }
+
+      // Check that all use sites are internal, if ALL internal, we can early return true, else false
+      for (let bool of boolArrTypeCasting) {
+        // if NOT internal, return false
+        if (!bool) { renameable = false; }
+      }
     }
 
-    // Check if there are both true and false values in boolArr, throw Error
-    if (boolArr.indexOf(true) >= 0 && boolArr.indexOf(false) >= 0) {
-      throw new Error('ts-minify does not support internal and external parameters at call expression sites');
+    if (this._typeReturn.has(symbol)) {
+      console.log(symbol.getName());
+      console.log(this._typeReturn.get(symbol));
+      for (let returnType of this._typeReturn.get(symbol)) {
+        boolArrReturnType.push(!this.isExternal(returnType));
+      }
+
+
+      if (boolArrReturnType.indexOf(true) >= 0 && boolArrReturnType.indexOf(false) >= 0) {
+        throw new Error('ts-minify does not support internal and external expressions at return sites');
+      }
+
+      for (let bool of boolArrReturnType) {
+        // if NOT internal, return false
+        //if (!bool) { renameable = false; }
+      }
     }
 
-    // Check that all use sites are internal, if ALL internal, we can early return true, else false
-    for (let bool of boolArr) {
-      // if NOT internal, return false
-      if (!bool) { return false; }
-    }
-
-    // all uses were internal, return true
-    return true;
+    return renameable;
   }
 
   private _preprocessVisitChildren(node: ts.Node) {
@@ -163,18 +204,6 @@ export class Minifier {
       this._preprocessVisit(child);
     });
   }
-
-  // private visitUntil(node: ts.Node, kind: ts.SyntaxKind) {
-  //   if (!node) return null;
-
-  //   for (let i = 0; i < node.getChildCount(); i++) {
-  //     if (node.getChildAt(i).kind === kind) {
-  //       return node.getChildAt(i);
-  //     } else {
-  //       return this.visitUntil(node.getChildAt(i), kind);
-  //     }
-  //   }
-  // }
 
   // all preprocess before we start emitting
   private _preprocessVisit(node: ts.Node) {
@@ -190,6 +219,7 @@ export class Minifier {
         // first declaration for now
         if (!lhsSymbol || !((<any>lhsSymbol.declarations[0]).parameters)) {
           this._preprocessVisitChildren(node);
+          break;
         } else {
           (<any>lhsSymbol.declarations[0]).parameters.forEach((param) => {
             paramSymbols.push(param.type.symbol);
@@ -213,37 +243,82 @@ export class Minifier {
 
           // visit children
           this._preprocessVisitChildren(node);
+          break;
         }
       }
-      case ts.SyntaxKind.MethodDeclaration: 
-      case ts.SyntaxKind.FunctionDeclaration: { 
-        //console.log('Function/Method Declaration!');
-        var funcDecl = <ts.FunctionLikeDeclaration>node;
-        // console.log(ts.SyntaxKind[funcDecl.type.kind]);
-
-        var symbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
-        //console.log(symbol.declarations[0].getSourceFile().fileName);
-
-       
-      }
+      // case ts.SyntaxKind.MethodDeclaration: 
+      // case ts.SyntaxKind.FunctionDeclaration: { 
+      //   //console.log('Function/Method Declaration!');
+      //   var funcDecl = <ts.FunctionLikeDeclaration>node;
+      //   // console.log(ts.SyntaxKind[funcDecl.type.kind]);
+      //   var symbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
+      //   //console.log(symbol.declarations[0].getSourceFile().fileName);
+      // }
       case ts.SyntaxKind.ReturnStatement: {
-        if (node.parent.kind !== ts.SyntaxKind.SourceFile) {
-          console.log('return statement');
+        if (node.parent.kind !== ts.SyntaxKind.SourceFile && (<ts.ReturnStatement>node).expression) {
+          console.log('return statement and has return expression');
 
           // check if there is an expression on the return statement since it's optional
-          console.log(this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol);
-        
+          let symbolReturn = this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol;
+          // console.log(node);
+          // console.log(ts.SyntaxKind[node.kind]);
+
+          // console.log('?????');
           let parent = node.parent;
+          // console.log('parent kind ' + ts.SyntaxKind[parent.kind]);
+          // console.log(parent.getText());
           while (parent.kind !== ts.SyntaxKind.FunctionDeclaration && parent.kind !== ts.SyntaxKind.MethodDeclaration) {
             parent = parent.parent;
+            // console.log(parent.getText());
+            // console.log('inside while statement ' + ts.SyntaxKind[parent.kind]);
+
+            // we need to abort
+            if (parent.kind === ts.SyntaxKind.SourceFile) {
+              break;
+            }
+          }
+
+          // console.log('does it get here?');
+
+          if (parent.kind === ts.SyntaxKind.SourceFile) {
+            this._preprocessVisitChildren(node);
+            break;
           }
 
           let funcDecl = <ts.FunctionLikeDeclaration>parent;
-          var symbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
-          console.log(symbol.declarations[0].getSourceFile().fileName);
 
-          // add to dictionary
+          if (!funcDecl.type) {
+            this._preprocessVisitChildren(node);
+            break;
+          }
+
+          // console.log('is there anything here');
+
+          // it breaks here :C
+          // console.log((<ts.TypeReferenceNode>funcDecl.type).typeName);
+          if ((<ts.TypeReferenceNode>funcDecl.type).typeName) {
+            // console.log(this._typeChecker.getTypeAtLocation(funcDecl.type));
+            var funcDeclSymbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcDecl.type).typeName);
+            // console.log(symbol.declarations[0].getSourceFile().fileName);
+
+             // console.log('what about here?');
+
+
+            // add to dictionary TODO: make utility funciton for adding to dictionary
+            // EXPECTED: Function Declaration Type Symbol
+            // ACTUAL: Return Type symbol
+            if (this._typeCasting.has(funcDeclSymbol)) {
+              this._typeCasting.get(funcDeclSymbol).push(symbolReturn);
+            } else {
+              this._typeCasting.set(funcDeclSymbol, [symbolReturn]);
+            }
+          }
+
+          
         }
+
+        this._preprocessVisitChildren(node);
+        break;
 
         // console.log(this._typeChecker.getSymbolAtLocation(node));
       }
@@ -264,7 +339,7 @@ export class Minifier {
         let children = pae.getChildren();
 
         output += this.visit(pae.expression);
-        output += pae.dotToken.getText();
+        output += pae.dotToken.getFullText();
 
         // if LHS is a module, do not rename property name
         var lhsTypeSymbol = this._typeChecker.getTypeAtLocation(pae.expression).symbol;
@@ -310,7 +385,9 @@ export class Minifier {
       case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.PropertyAssignment:
       case ts.SyntaxKind.PropertyDeclaration: {
-        return this.contextEmit(node, true);
+        let parentTypeSymbol = this._typeChecker.getTypeAtLocation(node.parent).symbol;
+        let renameable = this.isRenameable(parentTypeSymbol);
+        return this.contextEmit(node, renameable);
       }
       default: { return this.contextEmit(node); }
     }
@@ -321,7 +398,7 @@ export class Minifier {
     // The indicies of nodeText range from 0 ... nodeText.length - 1. However, the start and end
     // positions of nodeText that .getStart() and .getEnd() return are relative to
     // the entire sourcefile.
-    let nodeText = node.getText();
+    let nodeText = node.getFullText();
     let children = node.getChildren();
     let output = '';
     // prevEnd is used to keep track of how much of nodeText has been copied over. It is updated
@@ -336,8 +413,8 @@ export class Minifier {
       // are relative to the indicies of the parent's text range (0 ... nodeText.length - 1), by
       // off-setting by the value of the parent's start position. Now childStart and childEnd
       // are relative to the range of (0 ... nodeText.length).
-      let childStart = child.getStart() - node.getStart();
-      let childEnd = child.getEnd() - node.getStart();
+      let childStart = child.getFullStart() - node.getFullStart();
+      let childEnd = child.getEnd() - node.getFullStart();
       output += nodeText.substring(prevEnd, childStart);
       let childText = '';
       let hasName = (<any>node).name;
@@ -368,9 +445,16 @@ export class Minifier {
     return exprSymbol;
   }
 
-  private _renameIdent(node: ts.Node) { return this.renameProperty(this._ident(node)); }
+  // rename the identifier, but retain comments/spacing since we are using getFullText();
+  private _renameIdent(node: ts.Node) {
+    let fullText = node.getFullText();
+    let fullStart = node.getFullStart();
+    let regStart = node.getStart() - fullStart;
+    let preIdent = fullText.substring(0, regStart);
+    return preIdent + this.renameProperty(node.getText());
+  }
 
-  private _ident(node: ts.Node) { return node.getText(); }
+  private _ident(node: ts.Node) { return node.getFullText(); }
 
   // Alphabet: ['$', '_','0' - '9', 'a' - 'z', 'A' - 'Z'].
   // Generates the next char in the alphabet, starting from '$',
@@ -465,6 +549,6 @@ export class Minifier {
   }
 }
 
-var minifier = new Minifier();
-minifier.renameProgram(['../../test/input/external_return.ts']);
+// var minifier = new Minifier();
+// minifier.renameProgram(['../../test/input/external_return.ts']);
 
