@@ -55,7 +55,7 @@ function translateSource(content: string): string {
   sourceFiles.forEach((sf) => {
     // if (not a .d.ts file) and (is a .js or .ts file)
     if (!sf.fileName.match(/\.d\.ts$/) && !!sf.fileName.match(/\.[jt]s$/)) {
-      namesToContents[sf.fileName] = minifier.visit(sf);
+      namesToContents[sf.fileName] = minifier.renameProgramFromNode(sf);
     }
   });
   return namesToContents['test.ts'];
@@ -115,6 +115,19 @@ describe('Visitor pattern', () => {
              .to.throw(/Symbol information could not be extracted/);
        });
      });
+});
+
+describe('structural type coersion', () => {
+  it('correctly does not rename internal objects cast to external objects', () => {
+    expectTranslate('function f(): Error { return { name: null, message: null }; }')
+        .to.equal('function f(): Error { return { name: null, message: null }; }');
+    expectTranslate('function f(e: Error) { return e.name; } f({ name: null, message: null });')
+        .to.equal('function f(e: Error) { return e.name; } f({ name: null, message: null });');
+  });
+  it('correctly does not rename internal objects when external objects are cast to them', () => {
+    expectTranslate('function x(foo: { name: string, message: string }) { return foo; } x(new Error());')
+      .to.equal('function x(foo: { name: string, message: string }) { return foo; } x(new Error());');
+    });
 });
 
 describe('Selective renaming', () => {
