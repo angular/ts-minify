@@ -11,4 +11,4 @@ function main() {
 }
 
 assert.equal(main(), 'cat');
-console.log('Assertion passed');
+console.log('e2e_input.ts: Assertion Passed');

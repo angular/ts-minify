@@ -9,6 +9,7 @@
     "./typings/mocha/mocha.d.ts",
     "./node_modules/typescript/bin/typescript.d.ts",
     "./build/output/test/input/e2e_input.ts",
-    "./build/output/test/input/b.ts"
+    "./build/output/test/input/b.ts",
+    "./build/output/test/input/external_return.ts"
   ]
 }
