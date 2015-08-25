@@ -78,9 +78,7 @@ export class Minifier {
     let sourceFiles = program.getSourceFiles().filter((sf) => !sf.fileName.match(/\.d\.ts$/));
 
     // preprocess AST
-    sourceFiles.forEach((f) => {
-      this._preprocessVisit(f);
-    });
+    sourceFiles.forEach((f) => { this._preprocessVisit(f); });
 
     // visit and rename
     sourceFiles.forEach((f) => {
@@ -117,8 +115,7 @@ export class Minifier {
     // (ie: in case of string literal, or something like true.toString())
     if (!symbol) return true;
 
-    return symbol.declarations.some(
-      (decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
+    return symbol.declarations.some((decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
   }
 
   isRenameable(symbol: ts.Symbol): boolean {
@@ -129,11 +126,13 @@ export class Minifier {
     let renameable = true;
 
     // Three cases to consider:
-    // CANNOT RENAME: Use site passes an internally typed object, expected site wants an externally typed object
+    // CANNOT RENAME: Use site passes an internally typed object, expected site wants an externally
+    // typed object
     // CAN RENAME: Use site type symbols are internal, expected type symbols are internal
     // ERROR: Expected symbol is external, use sites are both internal and external
 
-    // Create boolean array of whether or not actual sites (type to which a symbol is being cast) are internal
+    // Create boolean array of whether or not actual sites (type to which a symbol is being cast)
+    // are internal
     if (this._typeCasting.has(symbol)) {
       for (let castType of this._typeCasting.get(symbol)) {
         boolArrTypeCasting.push(!this.isExternal(castType));
@@ -141,13 +140,17 @@ export class Minifier {
 
       // Check if there are both true and false values in boolArrTypeCasting, throw Error
       if (boolArrTypeCasting.indexOf(true) >= 0 && boolArrTypeCasting.indexOf(false) >= 0) {
-        throw new Error('ts-minify does not support accepting both internal and external types at a use site');
+        throw new Error(
+            'ts-minify does not support accepting both internal and external types at a use site');
       }
 
-      // Check that all use sites are internal, if ALL internal, we can early return true, else false
+      // Check that all use sites are internal, if ALL internal, we can early return true, else
+      // false
       for (let bool of boolArrTypeCasting) {
         // if NOT internal, return false
-        if (!bool) { renameable = false; }
+        if (!bool) {
+          renameable = false;
+        }
       }
     }
 
@@ -161,15 +164,15 @@ export class Minifier {
     return null;
   }
 
-  private _hasAncestor(n: ts.Node, kind: ts.SyntaxKind): boolean { return !!this._getAncestor(n, kind); }
-
-  private _preprocessVisitChildren(node: ts.Node) {
-    node.getChildren().forEach((child) => {
-      this._preprocessVisit(child);
-    });
+  private _hasAncestor(n: ts.Node, kind: ts.SyntaxKind): boolean {
+    return !!this._getAncestor(n, kind);
   }
 
-  // Key - To: the expected type symbol 
+  private _preprocessVisitChildren(node: ts.Node) {
+    node.getChildren().forEach((child) => { this._preprocessVisit(child); });
+  }
+
+  // Key - To: the expected type symbol
   // Value - From: the actual type symbol
   // IE: Coercing from type A to type B
   private _recordCast(from: ts.Symbol, to: ts.Symbol) {
@@ -194,21 +197,17 @@ export class Minifier {
           this._preprocessVisitChildren(node);
           break;
         } else {
-          (<any>lhsSymbol.declarations[0]).parameters.forEach((param) => {
-            paramSymbols.push(param.type.symbol);
-          });
+          (<any>lhsSymbol.declarations[0])
+              .parameters.forEach((param) => { paramSymbols.push(param.type.symbol); });
 
           let argsSymbols: ts.Symbol[] = [];
 
           // right hand side argument has actual type of parameter
-          callExpr.arguments.forEach((arg) => {
-            argsSymbols.push(this._typeChecker.getTypeAtLocation(arg).symbol);
-          });
+          callExpr.arguments.forEach(
+              (arg) => { argsSymbols.push(this._typeChecker.getTypeAtLocation(arg).symbol); });
 
           // Casting from: Use site symbol, to: actual parameter type
-          paramSymbols.forEach((sym, i) => {
-            this._recordCast(sym, argsSymbols[i]);
-          });
+          paramSymbols.forEach((sym, i) => { this._recordCast(sym, argsSymbols[i]); });
 
           this._preprocessVisitChildren(node);
           break;
@@ -220,7 +219,8 @@ export class Minifier {
           let varDeclTypeSymbol = this._typeChecker.getTypeAtLocation(varDecl.type).symbol;
           let initTypeSymbol = this._typeChecker.getTypeAtLocation(varDecl.initializer).symbol;
 
-          // Casting from: initializer's type symbol, to: actual variable declaration's annotated type
+          // Casting from: initializer's type symbol, to: actual variable declaration's annotated
+          // type
           this._recordCast(initTypeSymbol, varDeclTypeSymbol);
         }
         this._preprocessVisitChildren(node);
@@ -228,8 +228,10 @@ export class Minifier {
       }
       case ts.SyntaxKind.ReturnStatement: {
         // check if there is an expression on the return statement since it's optional
-        if (node.parent.kind !== ts.SyntaxKind.SourceFile && (<ts.ReturnStatement>node).expression) {
-          let symbolReturn = this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol;
+        if (node.parent.kind !== ts.SyntaxKind.SourceFile &&
+            (<ts.ReturnStatement>node).expression) {
+          let symbolReturn =
+              this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol;
           let ancestor;
 
           let hasMethodDeclAncestor = this._hasAncestor(node, ts.SyntaxKind.MethodDeclaration);
@@ -261,8 +263,10 @@ export class Minifier {
 
           // if there is no typeName, return early
           if ((<ts.TypeReferenceNode>funcLikeDecl.type).typeName) {
-            let funcLikeDeclSymbol = this._typeChecker.getSymbolAtLocation((<ts.TypeReferenceNode>funcLikeDecl.type).typeName);
-            // Casting from: return expression's type symbol, to: actual function/method declaration's return type
+            let funcLikeDeclSymbol = this._typeChecker.getSymbolAtLocation(
+                (<ts.TypeReferenceNode>funcLikeDecl.type).typeName);
+            // Casting from: return expression's type symbol, to: actual function/method
+            // declaration's return type
             this._recordCast(symbolReturn, funcLikeDeclSymbol);
           }
         }
