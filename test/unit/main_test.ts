@@ -132,16 +132,8 @@ describe('Full-text emit', () => {
         .to.equal('/// <reference path="../../typings/node/node.d.ts"/> var x = "hello";');
   });
   it('retains comments for a node', () => {
-    expectTranslate(`// This comment should show up
-                        class Foo {
-                          // these should also show up
-                          bar: string;
-                        }`)
-        .to.equal(`// This comment should show up
-                        class Foo {
-                          // these should also show up
-                          $: string;
-                        }`);
+    expectTranslate('// This comment should show up\n' + 'class Foo {\n' + '// these should also show up\n' + 'bar: string;\n' + '}')
+      .to.equal('// This comment should show up\n' + 'class Foo {\n' + '// these should also show up\n' + '$: string;\n' + '}');
   });
 });
 
