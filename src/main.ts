@@ -82,7 +82,7 @@ export class Minifier {
     });
 
     // reverse the typeCasting map  
-    this.reverseTypeCastMap();
+    // this.reverseTypeCastMap();
 
     // this._typeReturn.forEach((valueArr, key) => {
     //   console.log(key);
@@ -99,17 +99,17 @@ export class Minifier {
     });
   }
 
-  reverseTypeCastMap() {
-    this._typeCasting.forEach((valueArr, key) => {
-      valueArr.forEach((value) => {
-        if (this._typeReturn.has(value)) {
-          this._typeReturn.get(value).push(key);
-        } else {
-          this._typeReturn.set(value, [key]);
-        }
-      });
-    });
-  }
+  // reverseTypeCastMap() {
+  //   this._typeCasting.forEach((valueArr, key) => {
+  //     valueArr.forEach((value) => {
+  //       if (this._typeReturn.has(value)) {
+  //         this._typeReturn.get(value).push(key);
+  //       } else {
+  //         this._typeReturn.set(value, [key]);
+  //       }
+  //     });
+  //   });
+  // }
 
   getOutputPath(filePath: string, destination: string = '.'): string {
     destination = path.resolve(process.cwd(), destination);
@@ -178,12 +178,22 @@ export class Minifier {
       }
     }
 
+    console.log('renameable ' + renameable);
+
     if (this._typeReturn.has(symbol)) {
-      console.log(symbol.getName());
+      // console.log('what is default?');
+      // console.log(symbol.name);
+      // console.log(symbol);
+      // console.log(this._typeReturn.get(symbol));
       console.log(this._typeReturn.get(symbol));
       for (let returnType of this._typeReturn.get(symbol)) {
+        // console.log('returnType ');
+        // console.log(returnType);
+        // console.log(!this.isExternal(returnType));
         boolArrReturnType.push(!this.isExternal(returnType));
       }
+
+      console.log(boolArrReturnType);
 
 
       if (boolArrReturnType.indexOf(true) >= 0 && boolArrReturnType.indexOf(false) >= 0) {
@@ -192,7 +202,7 @@ export class Minifier {
 
       for (let bool of boolArrReturnType) {
         // if NOT internal, return false
-        //if (!bool) { renameable = false; }
+        if (!bool) { renameable = false; }
       }
     }
 
@@ -304,13 +314,13 @@ export class Minifier {
              // console.log('what about here?');
 
 
-            // add to dictionary TODO: make utility funciton for adding to dictionary
+            // add to dictionary TODO: make utility function for adding to dictionary
             // EXPECTED: Function Declaration Type Symbol
             // ACTUAL: Return Type symbol
-            if (this._typeCasting.has(funcDeclSymbol)) {
-              this._typeCasting.get(funcDeclSymbol).push(symbolReturn);
+            if (this._typeCasting.has(symbolReturn)) {
+              this._typeCasting.get(symbolReturn).push(funcDeclSymbol);
             } else {
-              this._typeCasting.set(funcDeclSymbol, [symbolReturn]);
+              this._typeCasting.set(symbolReturn, [funcDeclSymbol]);
             }
           }
 
@@ -324,6 +334,7 @@ export class Minifier {
       }
       default: {
         this._preprocessVisitChildren(node);
+        break;
       }
     }
   }
