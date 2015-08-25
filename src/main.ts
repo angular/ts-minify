@@ -27,6 +27,7 @@ export class Minifier {
   private _renameMap: {[name: string]: string} = {};
   private _typeCasting: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
   private _typeReturn: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
+  private _typeVarDecl: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
 
   private _lastGeneratedPropName: string = '';
   private _typeChecker: ts.TypeChecker;
@@ -92,7 +93,7 @@ export class Minifier {
     // visit and rename
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
-      // console.log(renamedTSCode);
+      console.log(renamedTSCode);
       var fileName = this.getOutputPath(f.fileName, destination);
       fsx.mkdirsSync(path.dirname(fileName));
       fs.writeFileSync(fileName, renamedTSCode);
@@ -206,8 +207,25 @@ export class Minifier {
       }
     }
 
+    // if (this._typeVarDecl.has(symbol)) {
+    // for (let assignType of this._typeVarDecl.get(symbol)) {
+    //   // console.log('returnType ');
+    //   // console.log(returnType);
+    //   // console.log(!this.isExternal(returnType));
+    //   boolArrReturnType.push(!this.isExternal(assignType));
+    // }
+
     return renameable;
   }
+
+  private _getAncestor(n: ts.Node, kind: ts.SyntaxKind): ts.Node {
+    for (var parent = n; parent; parent = parent.parent) {
+      if (parent.kind === kind) return parent;
+    }
+    return null;
+  }
+
+  private _hasAncestor(n: ts.Node, kind: ts.SyntaxKind): boolean { return !!this._getAncestor(n, kind); }
 
   private _preprocessVisitChildren(node: ts.Node) {
     node.getChildren().forEach((child) => {
@@ -217,7 +235,7 @@ export class Minifier {
 
   // all preprocess before we start emitting
   private _preprocessVisit(node: ts.Node) {
-    // console.log((<any>ts).SyntaxKind[node.kind]);
+    console.log((<any>ts).SyntaxKind[node.kind]);
     switch (node.kind) {
       case ts.SyntaxKind.CallExpression: {
         var callExpr = <ts.CallExpression>node;
@@ -255,6 +273,35 @@ export class Minifier {
           this._preprocessVisitChildren(node);
           break;
         }
+      }
+      // case ts.SyntaxKind.ObjectLiteralExpression: {
+      //   console.log(node);
+      //   console.log('variable decl', this._getAncestor(node, ts.SyntaxKind.VariableDeclaration)); // variable declaration with initializer
+      //   console.log('binary expression', this._getAncestor(node, ts.SyntaxKind.BinaryExpression)); // assignment
+      //   console.log('type assertion', this._getAncestor(node, ts.SyntaxKind.TypeAssertionExpression)); // compile time cast
+
+      //   this._preprocessVisitChildren(node);
+      //   break;
+      // }
+      case ts.SyntaxKind.VariableDeclaration: {
+        let varDecl = <ts.VariableDeclaration>node;
+        if (varDecl.initializer && varDecl.type) {
+          let varDeclTypeSymbol = this._typeChecker.getTypeAtLocation(varDecl.type).symbol;
+          let initTypeSymbol = this._typeChecker.getTypeAtLocation(varDecl.initializer).symbol;
+
+          if (this._typeVarDecl.has(initTypeSymbol)) {
+            this._typeCasting.get(initTypeSymbol).push(varDeclTypeSymbol);
+          } else {
+            this._typeCasting.set(initTypeSymbol, [varDeclTypeSymbol]);
+          }
+
+          // console.log('varDecl type symbol', this._typeChecker.getTypeAtLocation(varDecl.type).symbol);
+          // console.log('varDecl type symbol shows up external', this._typeChecker.getTypeAtLocation(varDecl.type).symbol.declarations[0].getSourceFile().fileName);
+          // console.log('varDecl expression type symbol', this._typeChecker.getTypeAtLocation(varDecl.initializer).symbol);
+        }
+
+        this._preprocessVisitChildren(node);
+        break;
       }
       // case ts.SyntaxKind.MethodDeclaration: 
       // case ts.SyntaxKind.FunctionDeclaration: { 
@@ -560,6 +607,6 @@ export class Minifier {
   }
 }
 
-// var minifier = new Minifier();
-// minifier.renameProgram(['../../test/input/external_return.ts']);
+var minifier = new Minifier();
+minifier.renameProgram(['../../test/input/external_return.ts']);
 
