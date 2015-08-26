@@ -82,9 +82,8 @@ export class Minifier {
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
       var fileName = this.getOutputPath(f.fileName, destination);
-      console.log(renamedTSCode);
-      //fsx.mkdirsSync(path.dirname(fileName));
-      //fs.writeFileSync(fileName, renamedTSCode);
+      fsx.mkdirsSync(path.dirname(fileName));
+      fs.writeFileSync(fileName, renamedTSCode);
     });
   }
 
@@ -498,6 +497,3 @@ export class Minifier {
     }
   }
 }
-
-var minifier = new Minifier();
-minifier.renameProgram(['../../test/input/external_call_site.ts']);

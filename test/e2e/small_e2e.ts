@@ -15,6 +15,8 @@ export function runE2ETests() {
 
   minifier.renameProgram(['./test/input/external_return.ts', './node_modules/typescript/bin/typescript.d.ts'], './build/output');
 
+  minifier.renameProgram(['./test/input/external_call_site.ts', './node_modules/typescript/bin/typescript.d.ts'], './build/output');
+
   // compile renamed program
   var child = exec('tsc', function(error, stdout, stderr) {
     if (stdout) console.log(stdout);
@@ -27,4 +29,6 @@ export function runE2ETests() {
   require('../../output/test/input/e2e_input.js');
   require('../../output/test/input/b.js');
   require('../../output/test/input/external_return.js');
+  require('../../output/test/input/external_call_site.js');
+
 }
