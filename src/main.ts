@@ -27,7 +27,7 @@ export class Minifier {
   private _renameMap: {[name: string]: string} = {};
 
   // Key: Type symbol at actual use sites (from)
-  // Value: The expected type symbol (to)
+  // Value: A list of the expected type symbol (to)
   private _typeCasting: Map<ts.Symbol, ts.Symbol[]> = <Map<ts.Symbol, ts.Symbol[]>>(new Map());
   private _lastGeneratedPropName: string = '';
   private _typeChecker: ts.TypeChecker;
@@ -77,15 +77,14 @@ export class Minifier {
 
     let sourceFiles = program.getSourceFiles().filter((sf) => !sf.fileName.match(/\.d\.ts$/));
 
-    // preprocess AST
     sourceFiles.forEach((f) => { this._preprocessVisit(f); });
 
-    // visit and rename
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
       var fileName = this.getOutputPath(f.fileName, destination);
-      fsx.mkdirsSync(path.dirname(fileName));
-      fs.writeFileSync(fileName, renamedTSCode);
+      console.log(renamedTSCode);
+      //fsx.mkdirsSync(path.dirname(fileName));
+      //fs.writeFileSync(fileName, renamedTSCode);
     });
   }
 
@@ -112,7 +111,8 @@ export class Minifier {
 
   isExternal(symbol: ts.Symbol): boolean {
     // TODO: figure out how to deal with undefined symbols
-    // (ie: in case of string literal, or something like true.toString())
+    // (ie: in case of string literal, or something like true.toString(), 
+    // the TypeScript typechecker will give an undefined symbol)
     if (!symbol) return true;
 
     return symbol.declarations.some((decl) => !!(decl.getSourceFile().fileName.match(/\.d\.ts/)));
@@ -122,12 +122,11 @@ export class Minifier {
     if (this.isExternal(symbol)) return false;
     if (!this._typeCasting.has(symbol)) return true;
 
-    let boolArrTypeCasting = [];
-    let renameable = true;
+    let boolArrTypeCasting: boolean[] = [];
 
     // Three cases to consider:
     // CANNOT RENAME: Use site passes an internally typed object, expected site wants an externally
-    // typed object
+    // typed object OR use site passes externally typed object, but expected site wants an internally typed object
     // CAN RENAME: Use site type symbols are internal, expected type symbols are internal
     // ERROR: Expected symbol is external, use sites are both internal and external
 
@@ -141,20 +140,12 @@ export class Minifier {
       // Check if there are both true and false values in boolArrTypeCasting, throw Error
       if (boolArrTypeCasting.indexOf(true) >= 0 && boolArrTypeCasting.indexOf(false) >= 0) {
         throw new Error(
-            'ts-minify does not support accepting both internal and external types at a use site');
-      }
-
-      // Check that all use sites are internal, if ALL internal, we can early return true, else
-      // false
-      for (let bool of boolArrTypeCasting) {
-        // if NOT internal, return false
-        if (!bool) {
-          renameable = false;
-        }
+          'ts-minify does not support accepting both internal and external types at a use site\n' + 'Symbol name: ' + symbol.getName());
       }
     }
 
-    return renameable;
+    // Since all values in boolArrayTypeCasting are all the same value, just return the first value
+    return boolArrTypeCasting[0];
   }
 
   private _getAncestor(n: ts.Node, kind: ts.SyntaxKind): ts.Node {
@@ -183,7 +174,11 @@ export class Minifier {
     }
   }
 
-  // all preprocess before we start emitting
+  // The preprocessing step is necessary in order to to find all typecasts (explicit and implicit) 
+  // in the given source file(s). During the visit step (where renaming and emitting occurs), 
+  // the information gathered from this step are used to figure out which types are internal to the
+  // scope that the minifier is working with and which are external. This allows the minifier to 
+  // rename properties more correctly.
   private _preprocessVisit(node: ts.Node) {
     switch (node.kind) {
       case ts.SyntaxKind.CallExpression: {
@@ -232,25 +227,25 @@ export class Minifier {
             (<ts.ReturnStatement>node).expression) {
           let symbolReturn =
               this._typeChecker.getTypeAtLocation((<ts.ReturnStatement>node).expression).symbol;
+
+          let methodDeclAncestor = this._getAncestor(node, ts.SyntaxKind.MethodDeclaration);
+          let funcDeclAncestor = this._getAncestor(node, ts.SyntaxKind.FunctionDeclaration);
           let ancestor;
 
-          let hasMethodDeclAncestor = this._hasAncestor(node, ts.SyntaxKind.MethodDeclaration);
-          let hasFuncDeclAncestor = this._hasAncestor(node, ts.SyntaxKind.FunctionDeclaration);
-
           // early exit if no ancestor that is method or function declaration
-          if (hasMethodDeclAncestor === false && hasFuncDeclAncestor === false) {
+          if (!methodDeclAncestor && !funcDeclAncestor) {
             this._preprocessVisitChildren(node);
             break;
           }
 
           // if node has method declaration, parent is method declaration
-          if (this._hasAncestor(node, ts.SyntaxKind.MethodDeclaration)) {
-            ancestor = this._getAncestor(node, ts.SyntaxKind.MethodDeclaration);
+          if (methodDeclAncestor) {
+            ancestor = methodDeclAncestor;
           }
 
           // if node has function declaration, parent is function declaration
-          if (this._hasAncestor(node, ts.SyntaxKind.FunctionDeclaration)) {
-            ancestor = this._getAncestor(node, ts.SyntaxKind.FunctionDeclaration);
+          if (funcDeclAncestor) {
+            ancestor = funcDeclAncestor;
           }
 
           let funcLikeDecl = <ts.FunctionLikeDeclaration>ancestor;
@@ -332,7 +327,7 @@ export class Minifier {
           let parentSymbol = this._typeChecker.getTypeAtLocation(node.parent).symbol;
           let rename = this.isRenameable(parentSymbol);
           return this.contextEmit(
-              node, rename);  // TODO: incorporate check for assignment to an external type
+              node, rename);
         }
         return this.contextEmit(node);
       }
@@ -503,3 +498,6 @@ export class Minifier {
     }
   }
 }
+
+var minifier = new Minifier();
+minifier.renameProgram(['../../test/input/external_call_site.ts']);
