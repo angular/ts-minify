@@ -79,9 +79,17 @@ export class Minifier {
 
     sourceFiles.forEach((f) => { this._preprocessVisit(f); });
 
+    this._typeCasting.forEach((value, key) => {
+      console.log('key: ' + key.getName());
+      value.forEach((val) => {
+        console.log('val: ' + val.getName());
+      })
+    });
+
     sourceFiles.forEach((f) => {
       var renamedTSCode = this.visit(f);
       var fileName = this.getOutputPath(f.fileName, destination);
+      console.log(renamedTSCode);
       fsx.mkdirsSync(path.dirname(fileName));
       fs.writeFileSync(fileName, renamedTSCode);
     });
@@ -118,6 +126,7 @@ export class Minifier {
   }
 
   isRenameable(symbol: ts.Symbol): boolean {
+
     if (this.isExternal(symbol)) return false;
     if (!this._typeCasting.has(symbol)) return true;
 
@@ -166,10 +175,32 @@ export class Minifier {
   // Value - From: the actual type symbol
   // IE: Coercing from type A to type B
   private _recordCast(from: ts.Symbol, to: ts.Symbol) {
+    if (!to || !from) return;
+
     if (this._typeCasting.has(from)) {
       this._typeCasting.get(from).push(to);
     } else {
       this._typeCasting.set(from, [to]);
+    }
+
+    // we look through properties
+    if (to.members) {
+      // console.log('to.members');
+      let members = to.members;
+      for (let key in to.members) {
+        console.log('key: ' + key);
+        if (!from.members[key]) continue;
+        // this._typeChecker.getTypeOfSymbolAtLocation()
+
+        let toSymbol = this._typeChecker.getDeclaredTypeOfSymbol(to.members[key]).symbol;
+        console.log('toSymbol: ' + toSymbol.getName());
+        //let toSymbol = to.members[key];
+        let fromSymbol = this._typeChecker.getDeclaredTypeOfSymbol(from.members[key]).symbol;
+
+        // console.log(from.members[key]);
+
+        this._recordCast(fromSymbol, toSymbol);
+      }
     }
   }
 
@@ -179,6 +210,7 @@ export class Minifier {
   // scope that the minifier is working with and which are external. This allows the minifier to 
   // rename properties more correctly.
   private _preprocessVisit(node: ts.Node) {
+    // console.log((<any>ts).SyntaxKind[node.kind]);
     switch (node.kind) {
       case ts.SyntaxKind.CallExpression: {
         var callExpr = <ts.CallExpression>node;
@@ -207,6 +239,41 @@ export class Minifier {
           break;
         }
       }
+      // case ts.SyntaxKind.ObjectLiteralExpression: {
+      //   console.log('====================');
+      //   let objLitExpr = <ts.ObjectLiteralExpression>node;
+
+      //   console.log(ts.SyntaxKind[objLitExpr.parent.kind]);
+
+      //   console.log(node.getText());
+
+      //   //console.log(objLitExpr);
+
+      //   console.log(this._typeChecker.getTypeAtLocation(objLitExpr).symbol);
+
+      //   console.log('-----------------------------');
+
+      //   objLitExpr.properties.forEach((prop) => {
+      //     console.log('---- property type symbol --------');
+      //     // console.log(this._typeChecker.getTypeAtLocation(prop).symbol);
+      //     let sym = this._typeChecker.getTypeAtLocation(prop).symbol;
+      //     // if (sym) {
+      //     //   console.log(sym.declarations[0].getSourceFile().fileName);
+      //     // }
+      //   });
+
+      //   //let typeSymbol = this._typeChecker.getTypeAtLocation(objLitExpr).symbol;
+      //   // console.log(typeSymbol);
+
+      //   // let members = typeSymbol.members;
+
+      //   // for (let idx in members) {
+      //   //   console.log(this._typeChecker.getTypeAtLocation(members[idx]));
+      //   // }
+
+      //   this._preprocessVisitChildren(node);
+      //   break;
+      // }
       case ts.SyntaxKind.VariableDeclaration: {
         let varDecl = <ts.VariableDeclaration>node;
         if (varDecl.initializer && varDecl.type) {
@@ -497,3 +564,6 @@ export class Minifier {
     }
   }
 }
+
+var minifier = new Minifier();
+minifier.renameProgram(['../../test/input/nested_obj_literal.ts']);
