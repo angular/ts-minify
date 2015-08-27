@@ -137,10 +137,6 @@ export class Minifier {
   }
 
   isRenameable(symbol: ts.Symbol): boolean {
-    if (symbol) {
-      console.log('isRenameable', symbol.getName());
-    }
-
     if (this.isExternal(symbol)) return false;
     if (!this._typeCasting.has(symbol) && !this._reverseTypeCasting.has(symbol)) return true;
 
@@ -200,10 +196,6 @@ export class Minifier {
       if (parent.kind === kind) return parent;
     }
     return null;
-  }
-
-  private _hasAncestor(n: ts.Node, kind: ts.SyntaxKind): boolean {
-    return !!this._getAncestor(n, kind);
   }
 
   private _preprocessVisitChildren(node: ts.Node) {
@@ -296,7 +288,6 @@ export class Minifier {
 
           let methodDeclAncestor = this._getAncestor(node, ts.SyntaxKind.MethodDeclaration);
           let funcDeclAncestor = this._getAncestor(node, ts.SyntaxKind.FunctionDeclaration);
-          let ancestor;
 
           // early exit if no ancestor that is method or function declaration
           if (!methodDeclAncestor && !funcDeclAncestor) {
@@ -304,25 +295,13 @@ export class Minifier {
             break;
           }
 
-          // if node has method declaration, parent is method declaration
-          if (methodDeclAncestor) {
-            ancestor = methodDeclAncestor;
-          }
+          let funcLikeDecl = <ts.FunctionLikeDeclaration>(methodDeclAncestor || funcDeclAncestor);
 
-          // if node has function declaration, parent is function declaration
-          if (funcDeclAncestor) {
-            ancestor = funcDeclAncestor;
-          }
-
-          let funcLikeDecl = <ts.FunctionLikeDeclaration>ancestor;
-
-          // if there is no type information, return early
           if (!funcLikeDecl.type) {
             this._preprocessVisitChildren(node);
             break;
           }
 
-          // if there is no typeName, return early
           if (funcLikeDecl.type && (<ts.TypeReferenceNode>funcLikeDecl.type).typeName) {
             let funcLikeDeclSymbol = this._typeChecker.getSymbolAtLocation(
                 (<ts.TypeReferenceNode>funcLikeDecl.type).typeName);
