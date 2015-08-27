@@ -72,9 +72,15 @@ export class Minifier {
     }
   }
 
-  // For testing purposes ONLY. Do not want to actually create/write
-  // the new TS files, only want to return the string.
-  renameProgramForTesting(node: ts.Node): string {
+  // This method assumes that the user has taken care of getting and setting the TypeChecker for
+  // an instance of the Minifier class.
+  //
+  // Example:
+  // var minifier = new Minifier();
+  // var typeChecker = program.getTypeChecker();
+  // var sourceFile = program.getSourceFile();
+  // minifier.setTypeChecker(typeChecker);
+  renameProgramFromNode(node: ts.Node): string {
     this._preprocessVisit(node);
     return this._visit(node);
   }
@@ -91,7 +97,7 @@ export class Minifier {
 
     if (DEBUG) {
       this._typeCasting.forEach((value, key) => {
-        value.forEach((val) => console.log('key: ' + key.name, 'val: ' + val.name));
+        value.forEach((val) => console.log('cast type from: ' + key.name, 'to: ' + val.name));
       });
     }
 
