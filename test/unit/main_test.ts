@@ -119,8 +119,10 @@ describe('Visitor pattern', () => {
 
 describe('structural type coersion', () => {
   it('correctly does not rename internal objects cast to external objects', () => {
-    expectTranslate('function f(): Error { return { name: null, message: null }; }').to.equal('function f(): Error { return { name: null, message: null }; }');
-    expectTranslate('function f(e: Error) { return e.name; } f({ name: null, message: null });').to.equal('function f(e: Error) { return e.name; } f({ name: null, message: null });');
+    expectTranslate('function f(): Error { return { name: null, message: null }; }')
+        .to.equal('function f(): Error { return { name: null, message: null }; }');
+    expectTranslate('function f(e: Error) { return e.name; } f({ name: null, message: null });')
+        .to.equal('function f(e: Error) { return e.name; } f({ name: null, message: null });');
   });
 });
 
