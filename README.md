@@ -222,7 +222,10 @@ $ npm install
 ```
 
 Run the unit tests with `gulp unit.test`
+
 Run the end-to-end tests with `gulp e2e.test`.
+
+This project uses `clang-format`. Run `gulp test.check-format` to make sure code you write conforms to this standard.
 
 - If you need some guidance on understanding TypeScript, look at the [TypeScript GitHub Wiki](https://github.com/Microsoft/TypeScript/wiki).
 - If you need a quick introduction to the TS Compiler API, take a look at the page on using the [TS Compiler](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API) API. 
