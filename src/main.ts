@@ -369,11 +369,7 @@ export class Minifier {
             this.hasFlag(paramDecl.modifiers, ts.NodeFlags.Protected)) {
           return this.contextEmit(node, true);
         }
-
-        let paramSymbol = this._typeChecker.getTypeAtLocation(paramDecl).symbol;
-        let renameable = this.isRenameable(paramSymbol);
-
-        return this.contextEmit(node, renameable);
+        return this.contextEmit(node);
       }
       case ts.SyntaxKind.PropertySignature: {
         if (node.parent.kind === ts.SyntaxKind.TypeLiteral ||
