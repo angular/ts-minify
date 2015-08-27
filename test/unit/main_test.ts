@@ -123,6 +123,8 @@ describe('structural type coersion', () => {
         .to.equal('function f(): Error { return { name: null, message: null }; }');
     expectTranslate('function f(e: Error) { return e.name; } f({ name: null, message: null });')
         .to.equal('function f(e: Error) { return e.name; } f({ name: null, message: null });');
+    expectTranslate('function x(foo: { name: string, message: string }) { return foo; } x(new Error());')
+        .to.equal('function x(foo: { name: string, message: string }) { return foo; } x(new Error());');
   });
 });
 
