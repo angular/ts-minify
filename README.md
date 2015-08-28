@@ -22,7 +22,7 @@ This tool is developed on TypeScript and NodeJS, and transpiled to ES5; it uses 
 - [TSConfig Users](#tsconfig-users)
 - [Scope of Minification](#scope-of-minification)
 - [Caveats/Warnings](#caveatswarnings)
-- [Preliminary Measurements](#preliminary-measurements)
+- [Sample Measurements](#sample-measurements)
 - [Contributing](#contributing)
 - [Contributors](#contributors)
 - [License: Apache 2.0](#license-apache-20)
@@ -68,7 +68,6 @@ The renaming eligibility of a property takes several factors into consideration:
 - Does the property belong to an object declared in an external file ([`.d.ts file`](http://definitelytyped.org/))?
 - Does the property belong to a [standard built-in object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects)?
 - Does the property name belong to the DOM?
-- Does the property belong to an object being exported?
 
 ###External vs. Internal Types
 
@@ -80,6 +79,10 @@ An *external* type is something that you are bringing into your program. It is a
 Typings for the standard library are included in the default library typings, `lib.d.ts`, which the TypeScript compiler uses during transpilation (it will typecheck your program at compile time) and does not need to be explicitly included.
 
 *Internal* types are ones that you, the programmer, have defined yourselves. Declaring a class `Foo` in your program tells the minifier that properties on `Foo` objects are within the renaming scope. Internal types also include things like object literal types.
+
+**Note**: If you want all internal sources to contain the same renamings, you should pass the relevant files together through a single pass of the minifier.
+
+An example of what types are considered *external* and *internal*:
 
 ```javascript
 var x: { name: string, message: string }; // The object literal is an internal type
@@ -183,14 +186,12 @@ If you are using a `tsconfig.json` file to reference your type definitions, pass
 ---
 Currently, TS-Minify will do property renaming throughout all the files that are passed into it. The minifier excludes `.d.ts` files from renaming because those are the typing definitions of external libraries. If your TypeScript program exports objects across those files, the minifier will rename them uniformly in their declarations and their usage sites.
 
-There are plans to enable safer renaming if you intend for your TypeScript code to be used as an external library (in the case that you have a public API). At the moment, however, there is no support for this.
-
 ###Caveats/Warnings
 
 ---
 In order to get the most out of the minifier, it is recommended that the user types their program as specifically and thoroughly as possible. In general, you should  avoid using the `any` type, and implicit `any`s in your code as this might result in unwanted naming.  
 
-We recommend that you write TypeScript with the  “no implicit any” compiler flag enabled, and try transpiling your code with the TS compiler before trying the minifier.
+We recommend that you compile your TypeScript program with the  `noImplicitAny` compiler flag enabled before trying the minifier.
 
 Please avoid explicit any casting: 
 
@@ -200,7 +201,7 @@ var x = 7;
 <any>x;
 ```
 
-###Preliminary Measurements
+###Sample Measurements
 
 ---
 TS-Minify was run on a well-typed TypeScript program with the following stats and results:
@@ -234,7 +235,7 @@ This project uses `clang-format`. Run `gulp test.check-format` to make sure code
 ###Contributors
 
 ---
-Daria Jung (lowly Google intern)
+Daria Jung (Google intern)
 
 
 ###License: Apache 2.0
@@ -259,4 +260,4 @@ limitations under the License.
 
 ---
 
-There are a lot of [issues](https://github.com/angular/ts-minify/issues)! Property renaming is hard! 
+Property renaming is hard and there are a lot of [issues](https://github.com/angular/ts-minify/issues)! If you're interesting in contributing to this project, please check some of them out. 
