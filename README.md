@@ -232,6 +232,20 @@ This project uses `clang-format`. Run `gulp test.check-format` to make sure code
 - If you need a quick introduction to the TS Compiler API, take a look at the page on using the [TS Compiler](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API) API. 
 - Take a look at the `typescript.d.ts` for type signatures, and to understand what is available to you from the TS toolchain.
 
+If you need some help debugging, there is a  `DEBUG` flag that can be enabled in `src/main.ts`:
+
+```javascript
+const DEBUG = true; // switch from false to true to enable the console.logs
+```
+
+There are some helpful print statements which print out: 
+
+- the `SyntaxKind` of the nodes being traversed
+- the minified string output
+- a dictionary of external/internal type casts
+
+Remember to switch the `DEBUG` flag off afterwards.
+
 ###Contributors
 
 ---
@@ -260,4 +274,7 @@ limitations under the License.
 
 ---
 
-Property renaming is hard and there are a lot of [issues](https://github.com/angular/ts-minify/issues)! If you're interesting in contributing to this project, please check some of them out. 
+Property renaming is hard and there are a lot of [issues](https://github.com/angular/ts-minify/issues)! If you're interesting in contributing to this project, please check some of them out.
+
+Issues are labelled `easy`, `medium`, and `hard`. Some have a `Needs Exploration` label which means you might have to poke around a bit before reaching conclusions about how to tackle the problem!
+
