@@ -1,6 +1,6 @@
 # TS-Minify (Experimental) [![Build Status](https://travis-ci.org/angular/ts-minify.svg)](https://travis-ci.org/angular/ts-minify)
 
-###About
+### About
 
 ---
 TS-Minify is tool to aid in the reduction of code size for programs written in the [TypeScript](http://www.typescriptlang.org/) language. It is currently **highly experimental**.
@@ -9,7 +9,7 @@ This tool is developed on TypeScript and NodeJS, and transpiled to ES5; it uses 
 
 **There is currently no CLI or build-tool integration for TS-Minify.**
 
-###Table of Contents
+### Table of Contents
 
 ----------
 
@@ -28,7 +28,7 @@ This tool is developed on TypeScript and NodeJS, and transpiled to ES5; it uses 
 - [License: Apache 2.0](#license-apache-20)
 - [Future](#future)
 
-###Motivation
+### Motivation
 
 ---
 Angular 2 (which is written in TypeScript) currently sits at around 135kb after being [Uglified](https://github.com/mishoo/UglifyJS) and compressed through GZIP. In comparison, Angular 1.4 is about 50kb, minified and compressed.
@@ -38,7 +38,7 @@ A smaller bundle size means that less data needs to be transferred and loaded by
 The impetus for this tool was to reduce the code size of the Angular 2 bundle, but TS-Minify is meant to be a generic tool that can be used on programs written in TypeScript.
 
 
-###What it Does
+### What it Does
 
 ---
 To achieve code size reduction, TS-Minify uses the idea of property renaming: take a TypeScript source file and rename properties to shorter property names, then re-emit the file as valid TypeScript.
@@ -47,7 +47,7 @@ To achieve code size reduction, TS-Minify uses the idea of property renaming: ta
 
 TS-Minify *only*  targets property renaming. Minification tactics like whitespace removal, dead code removal, variable name mangling, etc. are taken care of by tools such as [UglifyJS](https://github.com/mishoo/UglifyJS). TS-Minify specifically targets property renaming since it is something that is difficult to achieve *safely* without type information. As such, TS-Minify requires a program to be correctly and throughly typed, otherwise, unwanted renaming may occur. 
 
-###How Does it Work? The TL;DR
+### How Does it Work? The TL;DR
 
 ---
 The TypeScript Compiler API is utilized in order to access the Abstract Syntax Tree of a TypeScript source file. Identifiers that might be considered properties (such as identifiers in property declarations, property access expressions, method names in method declarations, etc.) are renamed to short names such as `a`, `b`, etc. after determining their renaming eligibility. A “renaming” global map is created with mappings from the original property name to the new generated property name so that re-namings are kept consistent between properties with the same names.
@@ -69,7 +69,7 @@ The renaming eligibility of a property takes several factors into consideration:
 - Does the property belong to a [standard built-in object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects)?
 - Does the property name belong to the DOM?
 
-###External vs. Internal Types
+### External vs. Internal Types
 
 ---
 TS-Minify is able to safely rename properties by understanding which types are *external*, and which are not, to one's program.
@@ -92,7 +92,7 @@ var x: Error; // Error is an external type
 // Structurally, the two are compatible, which brings us to the next section...
 ```
 
-###Structural Typing
+### Structural Typing
 
 ---
 TypeScript uses a [structural type system](https://en.wikipedia.org/wiki/Structural_type_system). This means that objects and variables can be casted from one type to another as long as they are structurally compatible. Sometimes this means that external objects might be casted to internal objects, or vise versa.
@@ -176,17 +176,17 @@ renameProgram(fileNames: string[], destination?: string)
 
 The minifier will uniformly rename the properties (which are available for renaming) across all the files that were passed in.
 
-###TSConfig Users
+### TSConfig Users
 
 ---
 If you are using a `tsconfig.json` file to reference your type definitions, pass in the `.d.ts` files for libraries used in your program to the minifier so that it can reference the type information for property renaming. The minfier does not have access to the `tsconfig.json` file. Otherwise, make sure to have `/// <reference path = 'foo.d.ts' />` at the top of your programs if you are using any external libraries.
 
-###Scope of Minification
+### Scope of Minification
 
 ---
 Currently, TS-Minify will do property renaming throughout all the files that are passed into it. The minifier excludes `.d.ts` files from renaming because those are the typing definitions of external libraries. If your TypeScript program exports objects across those files, the minifier will rename them uniformly in their declarations and their usage sites.
 
-###Caveats/Warnings
+### Caveats/Warnings
 
 ---
 In order to get the most out of the minifier, it is recommended that the user types their program as specifically and thoroughly as possible. In general, you should  avoid using the `any` type, and implicit `any`s in your code as this might result in unwanted naming.  
@@ -201,7 +201,7 @@ var x = 7;
 <any>x;
 ```
 
-###Sample Measurements
+### Sample Measurements
 
 ---
 TS-Minify was run on a well-typed TypeScript program with the following stats and results:
@@ -211,7 +211,7 @@ TS-Minify was run on a well-typed TypeScript program with the following stats an
 - Minified and Uglified: 56kb (codesize reduction of about 20%)
 - About 6% - 8% codesize reduction after minification, Uglification, and GZIP compression.
 
-###Contributing
+### Contributing
 
 ---
 Clone the repository from GitHub:
@@ -246,13 +246,13 @@ There are some helpful print statements which print out:
 
 Remember to switch the `DEBUG` flag off afterwards.
 
-###Contributors
+### Contributors
 
 ---
 Daria Jung (Google intern)
 
 
-###License: Apache 2.0
+### License: Apache 2.0
 
 ---
 ```
@@ -270,7 +270,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
-###Future
+### Future
 
 ---
 
