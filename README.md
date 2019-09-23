@@ -179,7 +179,7 @@ The minifier will uniformly rename the properties (which are available for renam
 ### TSConfig Users
 
 ---
-If you are using a `tsconfig.json` file to reference your type definitions, pass in the `.d.ts` files for libraries used in your program to the minifier so that it can reference the type information for property renaming. The minfier does not have access to the `tsconfig.json` file. Otherwise, make sure to have `/// <reference path = 'foo.d.ts' />` at the top of your programs if you are using any external libraries.
+If you are using a `tsconfig.json` file to reference your type definitions, pass in the `.d.ts` files for libraries used in your program to the minifier so that it can reference the type information for property renaming. The minifier does not have access to the `tsconfig.json` file. Otherwise, make sure to have `/// <reference path = 'foo.d.ts' />` at the top of your programs if you are using any external libraries.
 
 ### Scope of Minification
 
